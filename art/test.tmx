@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="64" height="56" tilewidth="64" tileheight="64" infinite="0" nextlayerid="2" nextobjectid="1">
+ <editorsettings>
+  <export target="../build/testbed.csv" format="csv"/>
+ </editorsettings>
+ <tileset firstgid="1" name="small_tiles" tilewidth="64" tileheight="64" tilecount="16" columns="4">
+  <image source="small_tiles.png" width="256" height="256"/>
+ </tileset>
+ <tileset firstgid="17" name="big_tiles" tilewidth="256" tileheight="256" tilecount="16" columns="4">
+  <image source="big_tiles.png" width="1024" height="1024"/>
+ </tileset>
+ <layer id="1" name="Livello tile 1" width="64" height="56">
+  <data encoding="base64" compression="zlib">
+   eJzt20EOgyAQQFHqDdqm979qF924cGEYwQ7zfsJS9IWEsMCttbYVH1Xj57/C/wiOu9r7P4F5MviPfNafnz8ePz8/Pz8/Pz9/LX/W+PnP+F+jP+SmRqx/pr1wFf+787lV/L3x8/NfGz//LH90bv7c539+/ln+f9zX+fn5+fn5+ev5o/Hz85+run/F+Pn5f0Xu//f2nPiukff/szbqf7JM4wsRJQVf
+  </data>
+ </layer>
+</map>
