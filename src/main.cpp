@@ -295,7 +295,7 @@ public:
 	}
 
 	static bool collide(const glm::ivec2& point, const Level& level) {
-		if (point.x >= 0 && point.x < level.height && point.y >= 0 && point.y < level.width) {
+		if (point.y >= 0 && point.y < level.height && point.x >= 0 && point.x < level.width) {
 			return level.tiles.at(point.y).at(point.x).solidity > 0;
 		}
 		else {
