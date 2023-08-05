@@ -28,14 +28,14 @@ struct WeaponSettings {
 
 struct Settings {
 	float playerMaxHealth;
-	float playerSpeed;
+	float playerMoveDelay;
 	float itemSpawnDelay;
 	float tileHealth;
 	std::array<WeaponSettings, 3> weapons;
 
 	Settings() {
 		playerMaxHealth = 100.0f;
-		playerSpeed = 0.1f;
+		playerMoveDelay = 0.1f;
 		itemSpawnDelay = 10.0f;
 		tileHealth = 10.0f;
 		weapons.at(WeaponType::MachineGun).ammo = 100;
@@ -71,23 +71,14 @@ struct Content {
 	Texture rocketlauncher;
 	Texture crosshair;
 
-	Texture percent100;
-	Texture percent75;
-	Texture percent50;
-	Texture percent25;
-
 	Content() {
 		pixel = LoadTexture("pixel.png");
+
 		drone = LoadTexture("drone.png");
 		machinegun = LoadTexture("machinegun.png");
 		laser = LoadTexture("laser.png");
 		rocketlauncher = LoadTexture("rocketlauncher.png");
 		crosshair = LoadTexture("crosshair.png");
-
-		percent100 = LoadTexture("100pc.png");
-		percent75 = LoadTexture("75pc.png");
-		percent50 = LoadTexture("50pc.png");
-		percent25 = LoadTexture("25pc.png");
 	}
 
 	~Content() {
@@ -98,11 +89,6 @@ struct Content {
 		UnloadTexture(laser);
 		UnloadTexture(rocketlauncher);
 		UnloadTexture(crosshair);
-
-		UnloadTexture(percent100);
-		UnloadTexture(percent75);
-		UnloadTexture(percent50);
-		UnloadTexture(percent25);
 	}
 };
 
@@ -147,7 +133,7 @@ public:
 	std::optional<WeaponType> weapon;
 	int ammo = 0;
 
-	Player(const Bounds& _bounds, const int player_index, const float health) : Actor(_bounds), playerIndex(player_index), crosshairPosition(bounds.position) { }
+	Player(const Bounds& _bounds, const int player_index, const float _health) : Actor(_bounds), playerIndex(player_index), crosshairPosition(bounds.position), health(_health) { }
 };
 
 class Projectile : public Actor {
@@ -339,39 +325,37 @@ public:
 			bool fire = false;
 
 			if (player.playerIndex == 0) {
-				const double move_delay = GetTime() - player.lastMovement;
-				if (move_delay >= settings.playerSpeed) {
-					move_right = IsKeyDown(KEY_D);
-					move_left = IsKeyDown(KEY_A);
-					move_down = IsKeyDown(KEY_S);
-					move_up = IsKeyDown(KEY_W);
-					player.lastMovement = GetTime();
-				}
-
+				move_right = IsKeyDown(KEY_D);
+				move_left = IsKeyDown(KEY_A);
+				move_down = IsKeyDown(KEY_S);
+				move_up = IsKeyDown(KEY_W);
 				move_crosshair_right = IsKeyPressed(KEY_RIGHT);
 				move_crosshair_left = IsKeyPressed(KEY_LEFT);
 				move_crosshair_down = IsKeyPressed(KEY_DOWN);
 				move_crosshair_up = IsKeyPressed(KEY_UP);
+				fire = IsKeyDown(KEY_SPACE);
+			}
 
-				const float weapon_delay = player.weapon.has_value() ? settings.weapons.at(*player.weapon).shootDelay : FLT_MAX;
-				if (GetTime() - player.lastShot >= weapon_delay) {
-					fire = IsKeyDown(KEY_SPACE);
-					player.lastShot = GetTime();
+			if (GetTime() - player.lastMovement >= settings.playerMoveDelay) {
+				Bounds new_bounds = player.bounds;
+				if (move_right) {
+					new_bounds.position.x += 1;
 				}
-			}
+				else if (move_left) {
+					new_bounds.position.x -= 1;
+				}
+				else if (move_down) {
+					new_bounds.position.y += 1;
+				}
+				else if (move_up) {
+					new_bounds.position.y -= 1;
+				}
 
-			Bounds new_bounds = player.bounds;
-			if (move_right) {
-				new_bounds.position.x += 1;
-			}
-			else if (move_left) {
-				new_bounds.position.x -= 1;
-			}
-			else if (move_down) {
-				new_bounds.position.y += 1;
-			}
-			else if (move_up) {
-				new_bounds.position.y -= 1;
+				if (!collide(new_bounds, level)) {
+					player.bounds = new_bounds;
+				}
+
+				player.lastMovement = GetTime();
 			}
 
 			if (move_crosshair_right) {
@@ -387,8 +371,20 @@ public:
 				player.crosshairPosition.y -= 1;
 			}
 
-			if (!collide(new_bounds, level)) {
-				player.bounds = new_bounds;
+			if (player.weapon.has_value()) {
+				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
+				if (fire && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
+					const glm::vec2 velocity = glm::normalize(glm::vec2(player.crosshairPosition) - glm::vec2(player.bounds.position)) * weapon_settings.projectileSpeed;
+					Projectile projectile(Bounds{ player.bounds.position, glm::ivec2(1,1) }, player.playerIndex, weapon_settings.projectileDamage, weapon_settings.penetrating, velocity);
+					projectiles.emplace_back(std::move(projectile));
+
+					player.ammo -= 1;
+					if (player.ammo == 0) {
+						player.weapon.reset();
+					}
+
+					player.lastShot = GetTime();
+				}
 			}
 
 			for (auto item_iter = items.begin(); item_iter != items.end(); ++item_iter) {
@@ -401,13 +397,6 @@ public:
 					item_iter = items.erase(item_iter);
 					break;
 				}
-			}
-
-			if (fire) {
-				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
-				const glm::vec2 velocity = glm::normalize(glm::vec2(player.crosshairPosition) - glm::vec2(player.bounds.position)) * weapon_settings.projectileSpeed;
-				Projectile projectile(Bounds{ player.bounds.position, glm::ivec2(1,1) }, player.playerIndex, weapon_settings.projectileDamage, weapon_settings.penetrating, velocity);
-				projectiles.emplace_back(std::move(projectile));
 			}
 		}
 
@@ -501,17 +490,17 @@ public:
 
 				const float healthpercent = player.health / settings.playerMaxHealth * 100.0f;
 
-				if (healthpercent >= 99) {
-					DrawTexture(content.percent100, offset, 62, tint);
+				if (healthpercent > 0) {
+					DrawTexture(content.pixel, offset, 62, tint);
 				}
-				else if (healthpercent >= 75) {
-					DrawTexture(content.percent75, offset, 62, tint);
+				if (healthpercent > 25) {
+					DrawTexture(content.pixel, offset + 1, 62, tint);
 				}
-				else if (healthpercent >= 50) {
-					DrawTexture(content.percent50, offset, 62, tint);
+				if (healthpercent > 50) {
+					DrawTexture(content.pixel, offset + 2, 62, tint);
 				}
-				else {
-					DrawTexture(content.percent25, offset, 62, tint);
+				if (healthpercent > 75) {
+					DrawTexture(content.pixel, offset + 3, 62, tint);
 				}
 			}
 
@@ -528,17 +517,17 @@ public:
 
 				const float ammopercent = float(player.ammo) / (settings.weapons.at(*player.weapon).maxAmmo) * 100.0f;
 
-				if (ammopercent >= 99) {
-					DrawTexture(content.percent100, offset + 5, 62, tint);
+				if (ammopercent > 0) {
+					DrawTexture(content.pixel, offset + 5, 62, tint);
 				}
-				else if (ammopercent >= 75) {
-					DrawTexture(content.percent75, offset + 5, 62, tint);
+				if (ammopercent > 25) {
+					DrawTexture(content.pixel, offset + 6, 62, tint);
 				}
-				else if (ammopercent >= 50) {
-					DrawTexture(content.percent50, offset + 5, 62, tint);
+				if (ammopercent > 50) {
+					DrawTexture(content.pixel, offset + 7, 62, tint);
 				}
-				else {
-					DrawTexture(content.percent25, offset + 5, 62, tint);
+				if (ammopercent > 75) {
+					DrawTexture(content.pixel, offset + 8, 62, tint);
 				}
 			}
 		}
