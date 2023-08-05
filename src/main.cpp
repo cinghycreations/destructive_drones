@@ -36,14 +36,14 @@ struct Settings {
 
 	Settings() {
 		playerMaxHealth = 100.0f;
-		playerSpeed = 10.0f;
-		playerCrosshairSpeed = 10.0f;
+		playerSpeed = 20.0f;
+		playerCrosshairSpeed = 20.0f;
 		itemSpawnDelay = 10.0f;
 		tileHealth = 10.0f;
 		weapons.at(WeaponType::MachineGun).ammo = 100;
 		weapons.at(WeaponType::MachineGun).maxAmmo = 100;
-		weapons.at(WeaponType::MachineGun).shootDelay = 0.1f;
-		weapons.at(WeaponType::MachineGun).projectileSpeed = 10.0f;
+		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
+		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
 		weapons.at(WeaponType::MachineGun).penetrating = false;
