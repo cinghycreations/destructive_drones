@@ -28,14 +28,16 @@ struct WeaponSettings {
 
 struct Settings {
 	float playerMaxHealth;
-	float playerMoveDelay;
+	float playerSpeed;
+	float playerCrosshairSpeed;
 	float itemSpawnDelay;
 	float tileHealth;
 	std::array<WeaponSettings, 3> weapons;
 
 	Settings() {
 		playerMaxHealth = 100.0f;
-		playerMoveDelay = 0.1f;
+		playerSpeed = 10.0f;
+		playerCrosshairSpeed = 10.0f;
 		itemSpawnDelay = 10.0f;
 		tileHealth = 10.0f;
 		weapons.at(WeaponType::MachineGun).ammo = 100;
@@ -127,13 +129,15 @@ public:
 	int playerIndex;
 	float health;
 	int score = 0;
+	glm::vec2 subpixelCrosshairPosition;
 	glm::ivec2 crosshairPosition;
-	double lastMovement = 0;
 	double lastShot = 0;
 	std::optional<WeaponType> weapon;
 	int ammo = 0;
+	glm::vec2 subpixelPosition;
 
-	Player(const Bounds& _bounds, const int player_index, const float _health) : Actor(_bounds), playerIndex(player_index), crosshairPosition(bounds.position), health(_health) { }
+	Player(const Bounds& _bounds, const int player_index, const float _health) : Actor(_bounds), playerIndex(player_index),
+		subpixelCrosshairPosition(bounds.position), crosshairPosition(bounds.position), health(_health), subpixelPosition(bounds.position) { }
 };
 
 class Projectile : public Actor {
@@ -314,61 +318,53 @@ public:
 
 	void update() {
 		for (Player& player : players) {
-			bool move_right = false;
-			bool move_left = false;
-			bool move_down = false;
-			bool move_up = false;
-			bool move_crosshair_right = false;
-			bool move_crosshair_left = false;
-			bool move_crosshair_down = false;
-			bool move_crosshair_up = false;
+			glm::vec2 move_direction(0, 0);
+			glm::vec2 move_crosshair_direction(0, 0);
 			bool fire = false;
 
 			if (player.playerIndex == 0) {
-				move_right = IsKeyDown(KEY_D);
-				move_left = IsKeyDown(KEY_A);
-				move_down = IsKeyDown(KEY_S);
-				move_up = IsKeyDown(KEY_W);
-				move_crosshair_right = IsKeyPressed(KEY_RIGHT);
-				move_crosshair_left = IsKeyPressed(KEY_LEFT);
-				move_crosshair_down = IsKeyPressed(KEY_DOWN);
-				move_crosshair_up = IsKeyPressed(KEY_UP);
+				if (IsKeyDown(KEY_D)) {
+					move_direction = glm::vec2(1, 0);
+				}
+				else if (IsKeyDown(KEY_A)) {
+					move_direction = glm::vec2(-1, 0);
+				}
+				else if (IsKeyDown(KEY_S)) {
+					move_direction = glm::vec2(0, 1);
+				}
+				else if (IsKeyDown(KEY_W)) {
+					move_direction = glm::vec2(0, -1);
+				}
+
+				if (IsKeyDown(KEY_RIGHT)) {
+					move_crosshair_direction = glm::vec2(1, 0);
+				}
+				else if (IsKeyDown(KEY_LEFT)) {
+					move_crosshair_direction = glm::vec2(-1, 0);
+				}
+				else if (IsKeyDown(KEY_DOWN)) {
+					move_crosshair_direction = glm::vec2(0, 1);
+				}
+				else if (IsKeyDown(KEY_UP)) {
+					move_crosshair_direction = glm::vec2(0, -1);
+				}
+
 				fire = IsKeyDown(KEY_SPACE);
 			}
 
-			if (GetTime() - player.lastMovement >= settings.playerMoveDelay) {
-				Bounds new_bounds = player.bounds;
-				if (move_right) {
-					new_bounds.position.x += 1;
-				}
-				else if (move_left) {
-					new_bounds.position.x -= 1;
-				}
-				else if (move_down) {
-					new_bounds.position.y += 1;
-				}
-				else if (move_up) {
-					new_bounds.position.y -= 1;
-				}
+			{
+				glm::vec2 new_subpixel_position = player.subpixelPosition + move_direction * settings.playerSpeed * GetFrameTime();
+				Bounds new_bounds{ glm::ivec2(new_subpixel_position), player.bounds.size };
 
 				if (!collide(new_bounds, level)) {
+					player.subpixelPosition = new_subpixel_position;
 					player.bounds = new_bounds;
 				}
-
-				player.lastMovement = GetTime();
 			}
 
-			if (move_crosshair_right) {
-				player.crosshairPosition.x += 1;
-			}
-			else if (move_crosshair_left) {
-				player.crosshairPosition.x -= 1;
-			}
-			else if (move_crosshair_down) {
-				player.crosshairPosition.y += 1;
-			}
-			else if (move_crosshair_up) {
-				player.crosshairPosition.y -= 1;
+			{
+				player.subpixelCrosshairPosition = player.subpixelCrosshairPosition + move_crosshair_direction * settings.playerCrosshairSpeed * GetFrameTime();
+				player.crosshairPosition = glm::ivec2(player.subpixelCrosshairPosition);
 			}
 
 			if (player.weapon.has_value()) {
