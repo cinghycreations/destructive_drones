@@ -31,6 +31,7 @@ struct Settings {
 	float playerCrosshairSpeed;
 	float itemSpawnDelay;
 	float tileHealth;
+	int scoreForWin;
 	std::array<WeaponSettings, 3> weapons;
 
 	Settings() {
@@ -39,8 +40,9 @@ struct Settings {
 		playerCrosshairSpeed = 20.0f;
 		itemSpawnDelay = 10.0f;
 		tileHealth = 10.0f;
-		weapons.at(WeaponType::MachineGun).ammo = 100;
-		weapons.at(WeaponType::MachineGun).maxAmmo = 100;
+		scoreForWin = 20;
+		weapons.at(WeaponType::MachineGun).ammo = 20;
+		weapons.at(WeaponType::MachineGun).maxAmmo = 40;
 		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
 		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
@@ -379,8 +381,15 @@ public:
 			for (auto item_iter = items.begin(); item_iter != items.end(); ++item_iter) {
 				if (collide(player.bounds, item_iter->bounds)) {
 					if (item_iter->type >= ItemType::Weapon0 && item_iter->type <= ItemType::Weapon7) {
-						player.weapon = WeaponType(item_iter->type - ItemType::Weapon0);
-						player.ammo = std::max<int>(player.ammo + settings.weapons.at(*player.weapon).ammo, settings.weapons.at(*player.weapon).maxAmmo);
+						const WeaponType weapon_type = WeaponType(item_iter->type - ItemType::Weapon0);
+
+						if (player.weapon.has_value() && *player.weapon == weapon_type) {
+							player.ammo = std::max<int>(player.ammo + settings.weapons.at(*player.weapon).ammo, settings.weapons.at(*player.weapon).maxAmmo);
+						}
+						else {
+							player.weapon = weapon_type;
+							player.ammo = settings.weapons.at(*player.weapon).maxAmmo;
+						}
 					}
 
 					item_iter = items.erase(item_iter);
@@ -499,55 +508,43 @@ public:
 
 	void renderUi() {
 		for (const Player& player : players) {
-			static const std::array<int, 4> offsets{1, 19, 36, 54};
+			static const std::array<int, 4> offsets{1, 18, 34, 51};
 			static const std::array<Color, 4> player_tints{ RED, YELLOW, GREEN, BLUE };
 
 			const int offset = offsets.at(player.playerIndex);
 			const Color tint = player_tints.at(player.playerIndex);
 
 			{
-				DrawTexture(content.drone, offset, 57, tint);
+				const int score_pixels = int(float(player.score) / float(settings.scoreForWin) * 6);
+				for (int i = 0; i < score_pixels; ++i) {
+					DrawTexture(content.pixel, offset + 0, 62 - i, tint);
+					DrawTexture(content.pixel, offset + 1, 62 - i, tint);
+				}
+			}
 
-				const float healthpercent = player.health / settings.playerMaxHealth * 100.0f;
+			{
+				DrawTexture(content.drone, offset + 3, 57, tint);
 
-				if (healthpercent > 0) {
-					DrawTexture(content.pixel, offset, 62, tint);
-				}
-				if (healthpercent > 25) {
-					DrawTexture(content.pixel, offset + 1, 62, tint);
-				}
-				if (healthpercent > 50) {
-					DrawTexture(content.pixel, offset + 2, 62, tint);
-				}
-				if (healthpercent > 75) {
-					DrawTexture(content.pixel, offset + 3, 62, tint);
+				const int health_pixels = int(std::ceil(player.health / settings.playerMaxHealth * 4));
+				for (int i = 0; i < health_pixels; ++i) {
+					DrawTexture(content.pixel, offset + 3 + i, 62, tint);
 				}
 			}
 
 			if (player.weapon.has_value()) {
 				if (player.weapon == WeaponType::MachineGun) {
-					DrawTexture(content.machinegun, offset + 5, 57, WHITE);
+					DrawTexture(content.machinegun, offset + 8, 57, WHITE);
 				}
 				else if (player.weapon == WeaponType::Laser) {
-					DrawTexture(content.laser, offset + 5, 57, WHITE);
+					DrawTexture(content.laser, offset + 8, 57, WHITE);
 				}
 				else if (player.weapon == WeaponType::RocketLauncher) {
-					DrawTexture(content.rocketlauncher, offset + 5, 57, WHITE);
+					DrawTexture(content.rocketlauncher, offset + 8, 57, WHITE);
 				}
 
-				const float ammopercent = float(player.ammo) / (settings.weapons.at(*player.weapon).maxAmmo) * 100.0f;
-
-				if (ammopercent > 0) {
-					DrawTexture(content.pixel, offset + 5, 62, tint);
-				}
-				if (ammopercent > 25) {
-					DrawTexture(content.pixel, offset + 6, 62, tint);
-				}
-				if (ammopercent > 50) {
-					DrawTexture(content.pixel, offset + 7, 62, tint);
-				}
-				if (ammopercent > 75) {
-					DrawTexture(content.pixel, offset + 8, 62, tint);
+				const int ammo_pixels = int(std::ceil(float(player.ammo) / float(settings.weapons.at(*player.weapon).maxAmmo) * 4));
+				for (int i = 0; i < ammo_pixels; ++i) {
+					DrawTexture(content.pixel, offset + 8 + i, 62, tint);
 				}
 			}
 		}
