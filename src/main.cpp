@@ -22,8 +22,7 @@ struct WeaponSettings {
 	float shootDelay;
 	float projectileSpeed;
 	float projectileDamage;
-	float blastRadius;
-	bool penetrating;
+	int blastRadius;
 };
 
 struct Settings {
@@ -46,21 +45,18 @@ struct Settings {
 		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
-		weapons.at(WeaponType::MachineGun).penetrating = false;
 		weapons.at(WeaponType::Laser).ammo = 20;
 		weapons.at(WeaponType::Laser).maxAmmo = 20;
 		weapons.at(WeaponType::Laser).shootDelay = 1.0f;
 		weapons.at(WeaponType::Laser).projectileSpeed = 100.0f;
 		weapons.at(WeaponType::Laser).projectileDamage = 25.0f;
 		weapons.at(WeaponType::Laser).blastRadius = 0;
-		weapons.at(WeaponType::Laser).penetrating = true;
 		weapons.at(WeaponType::RocketLauncher).ammo = 5;
 		weapons.at(WeaponType::RocketLauncher).maxAmmo = 5;
 		weapons.at(WeaponType::RocketLauncher).shootDelay = 2.0f;
-		weapons.at(WeaponType::RocketLauncher).projectileSpeed = 5.0f;
+		weapons.at(WeaponType::RocketLauncher).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileDamage = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).blastRadius = 4;
-		weapons.at(WeaponType::RocketLauncher).penetrating = false;
 	}
 };
 
@@ -142,14 +138,13 @@ public:
 
 class Projectile : public Actor {
 public:
-	Projectile(const Bounds& _bounds, const int owner_player_index, const float _damage, const bool _penetrating, const glm::vec2& subpixel_velocity) :
-		Actor(_bounds), ownerPlayerIndex(owner_player_index), damage(_damage), penetrating(_penetrating), subpixelVelocity(subpixel_velocity) {
+	Projectile(const Bounds& _bounds, const int owner_player_index, const int from_weapon, const glm::vec2& subpixel_velocity) :
+		Actor(_bounds), ownerPlayerIndex(owner_player_index), fromWeapon(from_weapon), subpixelVelocity(subpixel_velocity) {
 		subpixelPosition = glm::vec2(bounds.position) + glm::vec2(bounds.size) * 0.5f;
 	}
 
 	int ownerPlayerIndex;
-	float damage;
-	bool penetrating;
+	int fromWeapon;
 	glm::vec2 subpixelPosition;
 	glm::vec2 subpixelVelocity;
 };
@@ -268,6 +263,10 @@ public:
 		players.emplace_back(std::move(player));
 	}
 
+	static bool inLevel(const glm::ivec2& point, const Level& level) {
+		return point.x >= 0 && point.x < level.width && point.y >= 0 && point.y < level.height;
+	}
+
 	static bool collide(const Bounds& bounds0, const Bounds& bounds1) {
 		const glm::ivec2 intersect_min = glm::max(bounds0.position, bounds1.position);
 		const glm::ivec2 intersect_max = glm::min(bounds0.position + bounds0.size, bounds1.position + bounds1.size);
@@ -278,10 +277,8 @@ public:
 	static bool collide(const Bounds& bounds, const Level& level) {
 		for (int i = bounds.position.y; i < bounds.position.y + bounds.size.y; ++i) {
 			for (int j = bounds.position.x; j < bounds.position.x + bounds.size.x; ++j) {
-				if (i >= 0 && i < level.height && j >= 0 && j < level.width) {
-					if (level.tiles.at(i).at(j).solidity > 0) {
-						return true;
-					}
+				if (inLevel(glm::ivec2(i, j), level) && level.tiles.at(i).at(j).solidity > 0) {
+					return true;
 				}
 			}
 		}
@@ -295,12 +292,7 @@ public:
 	}
 
 	static bool collide(const glm::ivec2& point, const Level& level) {
-		if (point.y >= 0 && point.y < level.height && point.x >= 0 && point.x < level.width) {
-			return level.tiles.at(point.y).at(point.x).solidity > 0;
-		}
-		else {
-			return false;
-		}
+		return inLevel(point, level) && level.tiles.at(point.y).at(point.x).solidity > 0;
 	}
 
 	static std::vector<glm::ivec2> rasterizeLine(const glm::vec2& segment_start, const glm::vec2& segment_end) {
@@ -371,7 +363,8 @@ public:
 				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
 				if (fire && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
 					const glm::vec2 velocity = glm::normalize(glm::vec2(player.crosshairPosition) - glm::vec2(player.bounds.position)) * weapon_settings.projectileSpeed;
-					Projectile projectile(Bounds{ player.bounds.position, glm::ivec2(1,1) }, player.playerIndex, weapon_settings.projectileDamage, weapon_settings.penetrating, velocity);
+					const glm::ivec2 projectile_position = player.bounds.position + player.bounds.size / 2;
+					Projectile projectile(Bounds{ projectile_position, glm::ivec2(1,1) }, player.playerIndex, *player.weapon, velocity);
 					projectiles.emplace_back(std::move(projectile));
 
 					player.ammo -= 1;
@@ -399,21 +392,20 @@ public:
 		for (auto projectile_iter = projectiles.begin(); projectile_iter != projectiles.end();) {
 			Projectile& projectile = *projectile_iter;
 			const glm::vec2 start_position = projectile.subpixelPosition;
+
+			if (!inLevel(start_position, level)) {
+				projectile_iter = projectiles.erase(projectile_iter);
+				continue;
+			}
+
 			const glm::vec2 end_position = projectile.subpixelPosition + projectile.subpixelVelocity * GetFrameTime();
 			const std::vector<glm::ivec2> rasterized_line = rasterizeLine(start_position, end_position);
-			bool destroy = false;
+			std::optional<glm::ivec2> hit = std::nullopt;
 
 			for (const glm::ivec2& pixel : rasterized_line) {
 				if (collide(pixel, level)) {
-					level.tiles.at(pixel.y).at(pixel.x).solidity -= projectile.damage;
-					if (level.tiles.at(pixel.y).at(pixel.x).solidity <= 0) {
-						level.textureDirty = true;
-					}
-
-					if (!projectile.penetrating) {
-						destroy = true;
-						break;
-					}
+					hit = pixel;
+					break;
 				}
 
 				for (Player& player : players) {
@@ -422,16 +414,48 @@ public:
 					}
 
 					if (collide(pixel, player.bounds)) {
-						player.health -= projectile.damage;
-						if (!projectile.penetrating) {
-							destroy = true;
-							break;
-						}
+						hit = pixel;
+						break;
 					}
 				}
 			}
 
-			if (destroy) {
+			if (hit.has_value()) {
+				const WeaponSettings& weapon_settings = settings.weapons.at(projectile.fromWeapon);
+				const glm::ivec2 blast_min = *hit - glm::ivec2(weapon_settings.blastRadius, weapon_settings.blastRadius);
+				const glm::ivec2 blast_max = *hit + glm::ivec2(weapon_settings.blastRadius, weapon_settings.blastRadius);
+
+				std::array<bool, 8> player_affected;
+				player_affected.fill(false);
+
+				for (int hit_x = blast_min.x; hit_x <= blast_max.x; ++hit_x) {
+					for (int hit_y = blast_min.y; hit_y <= blast_max.y; ++hit_y) {
+						const glm::ivec2 blast_hit(hit_x, hit_y);
+						if (!inLevel(blast_hit, level) || glm::distance(glm::vec2(*hit), glm::vec2(blast_hit)) > float(weapon_settings.blastRadius)) {
+							continue;
+						}
+
+						Level::Tile& tile = level.tiles.at(blast_hit.y).at(blast_hit.x);
+						if (!tile.bedrock) {
+							tile.solidity -= weapon_settings.projectileDamage;
+							if (tile.solidity <= 0) {
+								level.textureDirty = true;
+							}
+						}
+
+						for (Player& player : players) {
+							if (player_affected.at(player.playerIndex)) {
+								continue;
+							}
+
+							if (collide(blast_hit, player.bounds)) {
+								player_affected.at(player.playerIndex) = true;
+								player.health -= weapon_settings.projectileDamage;
+							}
+						}
+					}
+				}
+
 				projectile_iter = projectiles.erase(projectile_iter);
 			}
 			else {
