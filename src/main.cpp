@@ -7,6 +7,7 @@
 #include <glm/gtx/compatibility.hpp>
 #include <list>
 #include <optional>
+#include <random>
 
 #pragma optimize("",off)
 
@@ -32,6 +33,7 @@ struct Settings {
 	float itemSpawnDelay;
 	float tileHealth;
 	int scoreForWin;
+	float respawnTime;
 	std::array<WeaponSettings, 3> weapons;
 
 	Settings() {
@@ -40,7 +42,8 @@ struct Settings {
 		playerCrosshairSpeed = 20.0f;
 		itemSpawnDelay = 10.0f;
 		tileHealth = 10.0f;
-		scoreForWin = 20;
+		scoreForWin = 10;
+		respawnTime = 5;
 		weapons.at(WeaponType::MachineGun).ammo = 20;
 		weapons.at(WeaponType::MachineGun).maxAmmo = 40;
 		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
@@ -125,6 +128,7 @@ public:
 class Player : public Actor {
 public:
 	int playerIndex;
+	bool ai;
 	float health;
 	int score = 0;
 	glm::vec2 subpixelCrosshairPosition;
@@ -134,8 +138,8 @@ public:
 	int ammo = 0;
 	glm::vec2 subpixelPosition;
 
-	Player(const Bounds& _bounds, const int player_index, const float _health) : Actor(_bounds), playerIndex(player_index),
-		subpixelCrosshairPosition(bounds.position), crosshairPosition(bounds.position), health(_health), subpixelPosition(bounds.position) { }
+	Player(const Bounds& _bounds, const int player_index, const bool _ai, const float _health) : Actor(_bounds), playerIndex(player_index),
+		subpixelCrosshairPosition(bounds.position), crosshairPosition(bounds.position), ai(_ai), health(_health), subpixelPosition(bounds.position) { }
 };
 
 class Projectile : public Actor {
@@ -243,12 +247,19 @@ private:
 
 class Session {
 public:
+	struct Respawn
+	{
+		int playerIndex;
+		double respawnTime;
+	};
+
 	const Settings& settings;
 	const Content& content;
 	Level level;
-	std::vector<Player> players;
+	std::list<Player> players;
 	std::list<Item> items;
 	std::list<Projectile> projectiles;
+	std::list<Respawn> respawns;
 
 	Session(const Settings& _settings, const Content& _content, Level& _level) : settings(_settings), content(_content), level(_level) {
 		for (const Level::ItemSpawn& spawn : level.itemSpawns) {
@@ -258,10 +269,41 @@ public:
 		}
 	}
 
-	void addPlayer(const int index) {
-		glm::ivec2 position = level.playerSpawns.front();
+	glm::ivec2 findRespawnPosition() {
+		std::vector<int> spawn_indices;
+		for (int i = 0; i < level.playerSpawns.size(); ++i) {
+			spawn_indices.push_back(i);
+		}
+
+		std::random_device random_device;
+		std::mt19937 random_generator(random_device());
+		std::shuffle(spawn_indices.begin(), spawn_indices.end(), random_generator);
+
+		for (int spawn_index : spawn_indices) {
+			const glm::ivec2 position = level.playerSpawns.at(spawn_index);
+			Bounds bounds{ position, glm::ivec2(4,4) };
+			bool occupied = false;
+
+			for (const Player& other_player : players) {
+				if (collide(bounds, other_player.bounds)) {
+					occupied = true;
+					break;
+				}
+			}
+
+			if (!occupied) {
+				return position;
+			}
+		}
+
+		TraceLog(LOG_ERROR, "Couldn't find spawn position!");
+		return glm::ivec2(-1, -1);
+	}
+
+	void addPlayer(const int index, const bool ai) {
+		const glm::ivec2 position = findRespawnPosition();
 		Bounds bounds{ position, glm::ivec2(4,4) };
-		Player player(bounds, index, settings.playerMaxHealth);
+		Player player(bounds, index, ai, settings.playerMaxHealth);
 		players.emplace_back(std::move(player));
 	}
 
@@ -312,6 +354,10 @@ public:
 
 	void update() {
 		for (Player& player : players) {
+			if (player.health <= 0) {
+				continue;
+			}
+
 			glm::vec2 move_direction(0, 0);
 			glm::vec2 move_crosshair_direction(0, 0);
 			bool fire = false;
@@ -418,6 +464,10 @@ public:
 				}
 
 				for (Player& player : players) {
+					if (player.health <= 0) {
+						continue;
+					}
+
 					if (projectile.ownerPlayerIndex == player.playerIndex) {
 						continue;
 					}
@@ -453,6 +503,10 @@ public:
 						}
 
 						for (Player& player : players) {
+							if (player.health <= 0) {
+								continue;
+							}
+
 							if (player_affected.at(player.playerIndex)) {
 								continue;
 							}
@@ -460,6 +514,19 @@ public:
 							if (collide(blast_hit, player.bounds)) {
 								player_affected.at(player.playerIndex) = true;
 								player.health -= weapon_settings.projectileDamage;
+
+								if (player.health <= 0) {
+									auto shooter = std::find_if(players.begin(), players.end(), [&projectile](const Player& player) { return player.playerIndex == projectile.ownerPlayerIndex; });
+									if (player.playerIndex == shooter->playerIndex) {
+										shooter->score -= 1;
+									}
+									else {
+										shooter->score += 1;
+									}
+
+									Respawn respawn{ player.playerIndex, GetTime() + settings.respawnTime };
+									respawns.emplace_back(std::move(respawn));
+								}
 							}
 						}
 					}
@@ -473,6 +540,19 @@ public:
 				++projectile_iter;
 			}
 		}
+
+		for (auto respawn_iter = respawns.begin(); respawn_iter != respawns.end();) {
+			if (GetTime() >= respawn_iter->respawnTime) {
+				auto player_iter = std::find_if(players.begin(), players.end(), [index = respawn_iter->playerIndex](const Player& player) { return player.playerIndex == index; });
+				player_iter->bounds.position = findRespawnPosition();
+				player_iter->health = settings.playerMaxHealth;
+
+				respawn_iter = respawns.erase(respawn_iter);
+			}
+			else {
+				++respawn_iter;
+			}
+		}
 	}
 
 	void renderScene() {
@@ -484,6 +564,10 @@ public:
 		DrawTexture(level.texture, 0, 0, WHITE);
 
 		for (const Player& player : players) {
+			if (player.health <= 0) {
+				continue;
+			}
+
 			static const std::array<Color, 4> player_tints{ RED, YELLOW, GREEN, BLUE };
 			DrawTexture(content.drone, player.bounds.position.x, player.bounds.position.y, player_tints.at(player.playerIndex));
 			DrawTexture(content.crosshair, player.crosshairPosition.x, player.crosshairPosition.y, player_tints.at(player.playerIndex));
@@ -563,7 +647,7 @@ int main() {
 	Content content;
 	Level level(settings);
 	Session session(settings, content, level);
-	session.addPlayer(0);
+	session.addPlayer(0, false);
 
 	while (!WindowShouldClose()) {
 
@@ -572,13 +656,13 @@ int main() {
 		camera.zoom = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
 
 		if (IsKeyPressed(KEY_F6)) {
-			session.addPlayer(1);
+			session.addPlayer(1, false);
 		}
 		if (IsKeyPressed(KEY_F7)) {
-			session.addPlayer(2);
+			session.addPlayer(2, false);
 		}
 		if (IsKeyPressed(KEY_F8)) {
-			session.addPlayer(3);
+			session.addPlayer(3, false);
 		}
 
 		session.update();
