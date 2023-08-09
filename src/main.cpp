@@ -72,7 +72,6 @@ struct Content {
 	Texture machinegun;
 	Texture laser;
 	Texture rocketlauncher;
-	Texture crosshair;
 
 	Content() {
 		pixel = LoadTexture("pixel.png");
@@ -81,7 +80,6 @@ struct Content {
 		machinegun = LoadTexture("machinegun.png");
 		laser = LoadTexture("laser.png");
 		rocketlauncher = LoadTexture("rocketlauncher.png");
-		crosshair = LoadTexture("crosshair.png");
 	}
 
 	~Content() {
@@ -91,7 +89,6 @@ struct Content {
 		UnloadTexture(machinegun);
 		UnloadTexture(laser);
 		UnloadTexture(rocketlauncher);
-		UnloadTexture(crosshair);
 	}
 };
 
@@ -131,15 +128,12 @@ public:
 	bool ai;
 	float health;
 	int score = 0;
-	glm::vec2 subpixelCrosshairPosition;
-	glm::ivec2 crosshairPosition;
 	double lastShot = 0;
 	std::optional<WeaponType> weapon;
 	int ammo = 0;
 	glm::vec2 subpixelPosition;
 
-	Player(const Bounds& _bounds, const int player_index, const bool _ai, const float _health) : Actor(_bounds), playerIndex(player_index),
-		subpixelCrosshairPosition(bounds.position), crosshairPosition(bounds.position), ai(_ai), health(_health), subpixelPosition(bounds.position) { }
+	Player(const Bounds& _bounds, const int player_index, const bool _ai, const float _health) : Actor(_bounds), playerIndex(player_index), ai(_ai), health(_health), subpixelPosition(bounds.position) { }
 };
 
 class Projectile : public Actor {
@@ -359,7 +353,7 @@ public:
 			}
 
 			glm::vec2 move_direction(0, 0);
-			glm::vec2 move_crosshair_direction(0, 0);
+			glm::vec2 shoot_direction(0, 0);
 			bool fire = false;
 
 			if (player.playerIndex == 0) {
@@ -377,19 +371,26 @@ public:
 				}
 
 				if (IsKeyDown(KEY_RIGHT)) {
-					move_crosshair_direction = glm::vec2(1, 0);
+					shoot_direction.x += 1;
+					fire = true;
 				}
 				else if (IsKeyDown(KEY_LEFT)) {
-					move_crosshair_direction = glm::vec2(-1, 0);
-				}
-				else if (IsKeyDown(KEY_DOWN)) {
-					move_crosshair_direction = glm::vec2(0, 1);
-				}
-				else if (IsKeyDown(KEY_UP)) {
-					move_crosshair_direction = glm::vec2(0, -1);
+					shoot_direction.x -= 1;
+					fire = true;
 				}
 
-				fire = IsKeyDown(KEY_SPACE);
+				if (IsKeyDown(KEY_DOWN)) {
+					shoot_direction.y += 1;
+					fire = true;
+				}
+				else if (IsKeyDown(KEY_UP)) {
+					shoot_direction.y -= 1;
+					fire = true;
+				}
+
+				if (glm::length(shoot_direction) > 0) {
+					shoot_direction = glm::normalize(shoot_direction);
+				}
 			}
 
 			{
@@ -402,15 +403,10 @@ public:
 				}
 			}
 
-			{
-				player.subpixelCrosshairPosition = player.subpixelCrosshairPosition + move_crosshair_direction * settings.playerCrosshairSpeed * GetFrameTime();
-				player.crosshairPosition = glm::ivec2(player.subpixelCrosshairPosition);
-			}
-
 			if (player.weapon.has_value()) {
 				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
 				if (fire && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
-					const glm::vec2 velocity = glm::normalize(glm::vec2(player.crosshairPosition) - glm::vec2(player.bounds.position)) * weapon_settings.projectileSpeed;
+					const glm::vec2 velocity = shoot_direction * weapon_settings.projectileSpeed;
 					const glm::ivec2 projectile_position = player.bounds.position + player.bounds.size / 2;
 					Projectile projectile(Bounds{ projectile_position, glm::ivec2(1,1) }, player.playerIndex, *player.weapon, velocity);
 					projectiles.emplace_back(std::move(projectile));
@@ -570,7 +566,6 @@ public:
 
 			static const std::array<Color, 4> player_tints{ RED, YELLOW, GREEN, BLUE };
 			DrawTexture(content.drone, player.bounds.position.x, player.bounds.position.y, player_tints.at(player.playerIndex));
-			DrawTexture(content.crosshair, player.crosshairPosition.x, player.crosshairPosition.y, player_tints.at(player.playerIndex));
 		}
 
 		for (const Item& item : items) {
