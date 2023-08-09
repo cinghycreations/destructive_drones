@@ -448,6 +448,56 @@ public:
 				move_direction = glm::normalize(glm::vec2(direction));
 			}
 		}
+		else {
+			const glm::ivec2 player_center = player.bounds.position + player.bounds.size / 2;
+
+			int nearest_player_distance = -1;
+			const Player* nearest_player = nullptr;
+
+			for (const Player& other_player : players) {
+				if (player.playerIndex != other_player.playerIndex) {
+					const auto& tile_path = player.pathfinding.tilePaths.at(other_player.bounds.position.y).at(other_player.bounds.position.x);
+
+					if (tile_path.shortestPath != -1 && (nearest_player_distance == -1 || tile_path.shortestPath < nearest_player_distance)) {
+						nearest_player_distance = tile_path.shortestPath;
+						nearest_player = &other_player;
+					}
+				}
+			}
+
+			if (nearest_player_distance != -1) {
+				std::vector<glm::ivec2> sight = rasterizeLine(player_center, nearest_player->bounds.position + nearest_player->bounds.size / 2);
+
+				bool visible = true;
+				for (const glm::ivec2& sight_point : sight) {
+					if (collide(sight_point, level)) {
+						visible = false;
+						break;
+					}
+				}
+
+				if (visible) {
+					shoot_direction = glm::normalize(glm::vec2(nearest_player->bounds.position + nearest_player->bounds.size / 2) - glm::vec2(player_center));
+					fire = true;
+				}
+				else {
+					glm::ivec2 direction;
+
+					glm::ivec2 current_position = nearest_player->bounds.position;
+					while (true) {
+						const auto& tile_path = player.pathfinding.tilePaths.at(current_position.y).at(current_position.x);
+						if (current_position == player.bounds.position || tile_path.shortestPath == 0) {
+							break;
+						}
+
+						direction = -tile_path.backDirection;
+						current_position = current_position + tile_path.backDirection;
+					}
+
+					move_direction = glm::normalize(glm::vec2(direction));
+				}
+			}
+		}
 	}
 
 	void humanPlayer(Player& player, glm::vec2& move_direction, glm::vec2& shoot_direction, bool& fire) {
