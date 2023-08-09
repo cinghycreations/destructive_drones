@@ -8,6 +8,7 @@
 #include <list>
 #include <optional>
 #include <random>
+#include <queue>
 
 #pragma optimize("",off)
 
@@ -122,6 +123,15 @@ public:
 	Item(const Bounds& _bounds, const ItemType _type) : Actor(_bounds), type(_type) {}
 };
 
+struct Pathfinding {
+	struct TilePath {
+		int shortestPath;
+		glm::ivec2 backDirection;
+	};
+
+	std::vector< std::vector<TilePath> > tilePaths;
+};
+
 class Player : public Actor {
 public:
 	int playerIndex;
@@ -132,6 +142,7 @@ public:
 	std::optional<WeaponType> weapon;
 	int ammo = 0;
 	glm::vec2 subpixelPosition;
+	Pathfinding pathfinding;
 
 	Player(const Bounds& _bounds, const int player_index, const bool _ai, const float _health) : Actor(_bounds), playerIndex(player_index), ai(_ai), health(_health), subpixelPosition(bounds.position) { }
 };
@@ -346,6 +357,142 @@ public:
 		return result;
 	}
 
+	static void updatePathfinding(Player& player, const Level& level) {
+		if (player.pathfinding.tilePaths.empty()) {
+			player.pathfinding.tilePaths.resize(level.height);
+			for (int i = 0; i < level.height; ++i) {
+				player.pathfinding.tilePaths.at(i).resize(level.width, Pathfinding::TilePath{-1, glm::ivec2(0, 0)});
+			}
+		}
+
+		for (int i = 0; i < level.height; ++i) {
+			for (int j = 0; j < level.width; ++j) {
+				player.pathfinding.tilePaths.at(i).at(j) = Pathfinding::TilePath{ -1, glm::ivec2(0, 0) };
+			}
+		}
+
+		std::queue<glm::ivec2> bfsQueue;
+		player.pathfinding.tilePaths.at(player.bounds.position.y).at(player.bounds.position.x) = Pathfinding::TilePath{ 0, glm::ivec2(0, -0) };
+		bfsQueue.push(player.bounds.position);
+
+		while (!bfsQueue.empty()) {
+			glm::ivec2 position = bfsQueue.front();
+			bfsQueue.pop();
+
+			const Pathfinding::TilePath& current_tilepath = player.pathfinding.tilePaths.at(position.y).at(position.x);
+
+			for (int di = -1; di <= 1; ++di) {
+				for (int dj = -1; dj <= 1; ++dj) {
+					Bounds new_bounds = player.bounds;
+					new_bounds.position = position + glm::ivec2(dj, di);
+
+					if (!inLevel(new_bounds.position, level)) {
+						continue;
+					}
+
+					Pathfinding::TilePath& next_tilepath = player.pathfinding.tilePaths.at(new_bounds.position.y).at(new_bounds.position.x);
+
+					if ((next_tilepath.shortestPath == -1 || current_tilepath.shortestPath + 1 < next_tilepath.shortestPath) && !collide(new_bounds, level)) {
+						next_tilepath.shortestPath = current_tilepath.shortestPath + 1;
+						next_tilepath.backDirection = glm::ivec2(-dj, -di);
+						bfsQueue.push(new_bounds.position);
+					}
+				}
+			}
+		}
+	}
+
+	void aiPlayer(Player& player, glm::vec2& move_direction, glm::vec2& shoot_direction, bool& fire) {
+		move_direction = glm::vec2(0, 0);
+		shoot_direction = glm::vec2(0, 0);
+		fire = false;
+
+		//const int turn = int(GetTime() / 0.5f);
+		//if (player.pathfinding.tilePaths.empty() || turn == player.playerIndex) {
+		updatePathfinding(player, level);
+		//}
+
+		if (!player.weapon.has_value()) {
+			int nearest_weapon_distance = -1;
+			glm::ivec2 nearest_weapon_position(-1, -1);
+
+			for (const Item& item : items) {
+				if (item.type >= ItemType::Weapon0 && item.type <= ItemType::Weapon7) {
+					for (int i = 0; i < item.bounds.size.y; ++i) {
+						for (int j = 0; j < item.bounds.size.x; ++j) {
+							const auto& tilepath = player.pathfinding.tilePaths.at(item.bounds.position.y + i).at(item.bounds.position.x + j);
+							if (tilepath.shortestPath != -1 && (nearest_weapon_distance == -1 || tilepath.shortestPath < nearest_weapon_distance)) {
+								nearest_weapon_distance = tilepath.shortestPath;
+								nearest_weapon_position = glm::ivec2(item.bounds.position.x + j, item.bounds.position.y + i);
+							}
+						}
+					}
+
+				}
+			}
+
+			if (nearest_weapon_distance != -1) {
+				glm::ivec2 direction;
+
+				glm::ivec2 current_position = nearest_weapon_position;
+				while (true) {
+					const auto& tile_path = player.pathfinding.tilePaths.at(current_position.y).at(current_position.x);
+					if (current_position == player.bounds.position || tile_path.shortestPath == 0) {
+						break;
+					}
+
+					direction = -tile_path.backDirection;
+					current_position = current_position + tile_path.backDirection;
+				}
+
+				move_direction = glm::normalize(glm::vec2(direction));
+			}
+		}
+	}
+
+	void humanPlayer(Player& player, glm::vec2& move_direction, glm::vec2& shoot_direction, bool& fire) {
+		move_direction = glm::vec2(0, 0);
+		shoot_direction = glm::vec2(0, 0);
+		fire = false;
+
+		if (player.playerIndex == 0) {
+			if (IsKeyDown(KEY_D)) {
+				move_direction = glm::vec2(1, 0);
+			}
+			else if (IsKeyDown(KEY_A)) {
+				move_direction = glm::vec2(-1, 0);
+			}
+			else if (IsKeyDown(KEY_S)) {
+				move_direction = glm::vec2(0, 1);
+			}
+			else if (IsKeyDown(KEY_W)) {
+				move_direction = glm::vec2(0, -1);
+			}
+
+			if (IsKeyDown(KEY_RIGHT)) {
+				shoot_direction.x += 1;
+				fire = true;
+			}
+			else if (IsKeyDown(KEY_LEFT)) {
+				shoot_direction.x -= 1;
+				fire = true;
+			}
+
+			if (IsKeyDown(KEY_DOWN)) {
+				shoot_direction.y += 1;
+				fire = true;
+			}
+			else if (IsKeyDown(KEY_UP)) {
+				shoot_direction.y -= 1;
+				fire = true;
+			}
+
+			if (glm::length(shoot_direction) > 0) {
+				shoot_direction = glm::normalize(shoot_direction);
+			}
+		}
+	}
+
 	void update() {
 		for (Player& player : players) {
 			if (player.health <= 0) {
@@ -356,41 +503,11 @@ public:
 			glm::vec2 shoot_direction(0, 0);
 			bool fire = false;
 
-			if (player.playerIndex == 0) {
-				if (IsKeyDown(KEY_D)) {
-					move_direction = glm::vec2(1, 0);
-				}
-				else if (IsKeyDown(KEY_A)) {
-					move_direction = glm::vec2(-1, 0);
-				}
-				else if (IsKeyDown(KEY_S)) {
-					move_direction = glm::vec2(0, 1);
-				}
-				else if (IsKeyDown(KEY_W)) {
-					move_direction = glm::vec2(0, -1);
-				}
-
-				if (IsKeyDown(KEY_RIGHT)) {
-					shoot_direction.x += 1;
-					fire = true;
-				}
-				else if (IsKeyDown(KEY_LEFT)) {
-					shoot_direction.x -= 1;
-					fire = true;
-				}
-
-				if (IsKeyDown(KEY_DOWN)) {
-					shoot_direction.y += 1;
-					fire = true;
-				}
-				else if (IsKeyDown(KEY_UP)) {
-					shoot_direction.y -= 1;
-					fire = true;
-				}
-
-				if (glm::length(shoot_direction) > 0) {
-					shoot_direction = glm::normalize(shoot_direction);
-				}
+			if (player.ai) {
+				aiPlayer(player, move_direction, shoot_direction, fire);
+			}
+			else {
+				humanPlayer(player, move_direction, shoot_direction, fire);
 			}
 
 			{
@@ -651,13 +768,13 @@ int main() {
 		camera.zoom = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
 
 		if (IsKeyPressed(KEY_F6)) {
-			session.addPlayer(1, false);
+			session.addPlayer(1, IsKeyDown(KEY_LEFT_SHIFT));
 		}
 		if (IsKeyPressed(KEY_F7)) {
-			session.addPlayer(2, false);
+			session.addPlayer(2, IsKeyDown(KEY_LEFT_SHIFT));
 		}
 		if (IsKeyPressed(KEY_F8)) {
-			session.addPlayer(3, false);
+			session.addPlayer(3, IsKeyDown(KEY_LEFT_SHIFT));
 		}
 
 		session.update();
