@@ -315,7 +315,7 @@ public:
 	static bool collide(const Bounds& bounds, const Level& level) {
 		for (int i = bounds.position.y; i < bounds.position.y + bounds.size.y; ++i) {
 			for (int j = bounds.position.x; j < bounds.position.x + bounds.size.x; ++j) {
-				if (inLevel(glm::ivec2(i, j), level) && level.tiles.at(i).at(j).solidity > 0) {
+				if (inLevel(glm::ivec2(j, i), level) && level.tiles.at(i).at(j).solidity > 0) {
 					return true;
 				}
 			}
