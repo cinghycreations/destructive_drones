@@ -381,22 +381,20 @@ public:
 
 			const Pathfinding::TilePath& current_tilepath = player.pathfinding.tilePaths.at(position.y).at(position.x);
 
-			for (int di = -1; di <= 1; ++di) {
-				for (int dj = -1; dj <= 1; ++dj) {
-					Bounds new_bounds = player.bounds;
-					new_bounds.position = position + glm::ivec2(dj, di);
+			for (glm::ivec2 delta : { glm::ivec2(-1, 0), glm::ivec2(1, 0), glm::ivec2(0, -1), glm::ivec2(0, 1) }) {
+				Bounds new_bounds = player.bounds;
+				new_bounds.position = position + delta;
 
-					if (!inLevel(new_bounds.position, level)) {
-						continue;
-					}
+				if (!inLevel(new_bounds.position, level)) {
+					continue;
+				}
 
-					Pathfinding::TilePath& next_tilepath = player.pathfinding.tilePaths.at(new_bounds.position.y).at(new_bounds.position.x);
+				Pathfinding::TilePath& next_tilepath = player.pathfinding.tilePaths.at(new_bounds.position.y).at(new_bounds.position.x);
 
-					if ((next_tilepath.shortestPath == -1 || current_tilepath.shortestPath + 1 < next_tilepath.shortestPath) && !collide(new_bounds, level)) {
-						next_tilepath.shortestPath = current_tilepath.shortestPath + 1;
-						next_tilepath.backDirection = glm::ivec2(-dj, -di);
-						bfsQueue.push(new_bounds.position);
-					}
+				if ((next_tilepath.shortestPath == -1 || current_tilepath.shortestPath + 1 < next_tilepath.shortestPath) && !collide(new_bounds, level)) {
+					next_tilepath.shortestPath = current_tilepath.shortestPath + 1;
+					next_tilepath.backDirection = -delta;
+					bfsQueue.push(new_bounds.position);
 				}
 			}
 		}
@@ -455,7 +453,7 @@ public:
 			const Player* nearest_player = nullptr;
 
 			for (const Player& other_player : players) {
-				if (player.playerIndex != other_player.playerIndex) {
+				if (player.playerIndex != other_player.playerIndex && other_player.health > 0) {
 					const auto& tile_path = player.pathfinding.tilePaths.at(other_player.bounds.position.y).at(other_player.bounds.position.x);
 
 					if (tile_path.shortestPath != -1 && (nearest_player_distance == -1 || tile_path.shortestPath < nearest_player_distance)) {
@@ -679,6 +677,8 @@ public:
 								player.health -= weapon_settings.projectileDamage;
 
 								if (player.health <= 0) {
+									player.weapon.reset();
+
 									auto shooter = std::find_if(players.begin(), players.end(), [&projectile](const Player& player) { return player.playerIndex == projectile.ownerPlayerIndex; });
 									if (player.playerIndex == shooter->playerIndex) {
 										shooter->score -= 1;
@@ -708,6 +708,7 @@ public:
 			if (GetTime() >= respawn_iter->respawnTime) {
 				auto player_iter = std::find_if(players.begin(), players.end(), [index = respawn_iter->playerIndex](const Player& player) { return player.playerIndex == index; });
 				player_iter->bounds.position = findRespawnPosition();
+				player_iter->subpixelPosition = player_iter->bounds.position;
 				player_iter->health = settings.playerMaxHealth;
 
 				respawn_iter = respawns.erase(respawn_iter);
