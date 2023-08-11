@@ -35,6 +35,7 @@ struct Settings {
 	float tileHealth;
 	int scoreForWin;
 	float respawnTime;
+	std::array<Color, 4> playerTints;
 	std::array<WeaponSettings, 3> weapons;
 
 	Settings() {
@@ -45,6 +46,10 @@ struct Settings {
 		tileHealth = 10.0f;
 		scoreForWin = 10;
 		respawnTime = 5;
+		playerTints.at(0) = RED;
+		playerTints.at(1) = YELLOW;
+		playerTints.at(2) = GREEN;
+		playerTints.at(3) = BLUE;
 		weapons.at(WeaponType::MachineGun).ammo = 20;
 		weapons.at(WeaponType::MachineGun).maxAmmo = 40;
 		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
@@ -87,6 +92,7 @@ struct Content {
 	Texture help;
 	Texture select_players;
 	Texture splash;
+	Texture rankings;
 
 	Content() {
 		pixel = LoadTexture("pixel.png");
@@ -109,6 +115,7 @@ struct Content {
 		help = LoadTexture("ui/help.png");
 		select_players = LoadTexture("ui/select_players.png");
 		splash = LoadTexture("ui/splash.png");
+		rankings = LoadTexture("ui/rankings.png");
 	}
 
 	~Content() {
@@ -132,6 +139,7 @@ struct Content {
 		UnloadTexture(help);
 		UnloadTexture(select_players);
 		UnloadTexture(splash);
+		UnloadTexture(rankings);
 	}
 };
 
@@ -787,6 +795,32 @@ public:
 		}
 	}
 
+	std::optional<std::vector<int>> checkEndgame() {
+
+		bool finished = false;
+		std::vector<std::pair<int, int>> scores;
+
+		for (const Player& player : players) {
+			scores.emplace_back(player.score, player.playerIndex);
+			if (player.score == settings.scoreForWin) {
+				finished = true;
+			}
+		}
+
+		if (!finished) {
+			return std::nullopt;
+		}
+
+		std::vector<int> rankings;
+
+		std::sort(scores.begin(), scores.end());
+		for (auto iter = scores.rbegin(); iter != scores.rend(); ++iter) {
+			rankings.push_back(iter->second);
+		}
+
+		return rankings;
+	}
+
 	void renderScene() {
 		if (level.textureDirty) {
 			level.refreshTexture();
@@ -800,8 +834,7 @@ public:
 				continue;
 			}
 
-			static const std::array<Color, 4> player_tints{ RED, YELLOW, GREEN, BLUE };
-			DrawTexture(content.drone, player.bounds.position.x, player.bounds.position.y, player_tints.at(player.playerIndex));
+			DrawTexture(content.drone, player.bounds.position.x, player.bounds.position.y, settings.playerTints.at(player.playerIndex));
 		}
 
 		for (const Item& item : items) {
@@ -824,10 +857,9 @@ public:
 	void renderUi() {
 		for (const Player& player : players) {
 			static const std::array<int, 4> offsets{1, 18, 34, 51};
-			static const std::array<Color, 4> player_tints{ RED, YELLOW, GREEN, BLUE };
 
 			const int offset = offsets.at(player.playerIndex);
-			const Color tint = player_tints.at(player.playerIndex);
+			const Color tint = settings.playerTints.at(player.playerIndex);
 
 			{
 				const int score_pixels = int(float(player.score) / float(settings.scoreForWin) * 6);
@@ -875,16 +907,21 @@ public:
 		Help,
 		Credits,
 		GameStarting,
-		Endgame,
+		Rankings,
 	};
 
+	const Settings& settings;
 	Content& content;
 	const Camera2D& camera;
 	MenuPage currentPage;
 	int players = 1;
 	int bots = 3;
+	std::vector<int> rankings;
 
-	Menu(Content& _content, const Camera2D& _camera, const MenuPage current_page) : content(_content), camera(_camera), currentPage(current_page) {
+	Menu(const Settings& _settings, Content& _content, const Camera2D& _camera) : settings(_settings), content(_content), camera(_camera), currentPage(MenuPage::Splash) {
+	}
+
+	Menu(const Settings& _settings, Content& _content, const Camera2D& _camera, const std::vector<int>& _rankings) : settings(_settings), content(_content), camera(_camera), currentPage(MenuPage::Rankings), rankings(_rankings) {
 	}
 
 	void updateAndRender()
@@ -967,6 +1004,29 @@ public:
 				currentPage = MenuPage::GameStarting;
 			}
 		}
+		else if (currentPage == MenuPage::Rankings) {
+			DrawTexture(content.rankings, 0, 0, WHITE);
+
+			if (rankings.size() >= 1) {
+				DrawTexture(content.drone, 36, 23, settings.playerTints.at(rankings.at(0)));
+			}
+
+			if (rankings.size() >= 2) {
+				DrawTexture(content.drone, 36, 31, settings.playerTints.at(rankings.at(1)));
+			}
+
+			if (rankings.size() >= 3) {
+				DrawTexture(content.drone, 36, 39, settings.playerTints.at(rankings.at(2)));
+			}
+
+			if (rankings.size() >= 4) {
+				DrawTexture(content.drone, 36, 47, settings.playerTints.at(rankings.at(3)));
+			}
+
+			if (button(content.button_back, 1, 54)) {
+				currentPage = MenuPage::Splash;
+			}
+		}
 	}
 
 private:
@@ -999,7 +1059,7 @@ int main() {
 	std::unique_ptr<Level> level;
 	std::unique_ptr<Session> session;
 
-	menu.reset(new Menu(content, camera, Menu::Splash));
+	menu.reset(new Menu(settings, content, camera));
 
 	while (!WindowShouldClose()) {
 		camera.zoom = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
@@ -1031,6 +1091,13 @@ int main() {
 			session->update();
 			session->renderScene();
 			session->renderUi();
+
+			std::optional<std::vector<int>> rankings = session->checkEndgame();
+			if (rankings.has_value()) {
+				session.reset();
+				level.reset();
+				menu.reset(new Menu(settings, content, camera, *rankings));
+			}
 		}
 
 		EndMode2D();
