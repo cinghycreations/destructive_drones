@@ -74,6 +74,20 @@ struct Content {
 	Texture laser;
 	Texture rocketlauncher;
 
+	Texture button_back;
+	Texture button_credits;
+	Texture button_four;
+	Texture button_help;
+	Texture button_one;
+	Texture button_play;
+	Texture button_three;
+	Texture button_two;
+	Texture button_zero;
+	Texture credits;
+	Texture help;
+	Texture select_players;
+	Texture splash;
+
 	Content() {
 		pixel = LoadTexture("pixel.png");
 
@@ -81,6 +95,20 @@ struct Content {
 		machinegun = LoadTexture("machinegun.png");
 		laser = LoadTexture("laser.png");
 		rocketlauncher = LoadTexture("rocketlauncher.png");
+
+		button_back = LoadTexture("ui/button_back.png");
+		button_credits = LoadTexture("ui/button_credits.png");
+		button_four = LoadTexture("ui/button_four.png");
+		button_help = LoadTexture("ui/button_help.png");
+		button_one = LoadTexture("ui/button_one.png");
+		button_play = LoadTexture("ui/button_play.png");
+		button_three = LoadTexture("ui/button_three.png");
+		button_two = LoadTexture("ui/button_two.png");
+		button_zero = LoadTexture("ui/button_zero.png");
+		credits = LoadTexture("ui/credits.png");
+		help = LoadTexture("ui/help.png");
+		select_players = LoadTexture("ui/select_players.png");
+		splash = LoadTexture("ui/splash.png");
 	}
 
 	~Content() {
@@ -90,6 +118,20 @@ struct Content {
 		UnloadTexture(machinegun);
 		UnloadTexture(laser);
 		UnloadTexture(rocketlauncher);
+
+		UnloadTexture(button_back);
+		UnloadTexture(button_credits);
+		UnloadTexture(button_four);
+		UnloadTexture(button_help);
+		UnloadTexture(button_one);
+		UnloadTexture(button_play);
+		UnloadTexture(button_three);
+		UnloadTexture(button_two);
+		UnloadTexture(button_zero);
+		UnloadTexture(credits);
+		UnloadTexture(help);
+		UnloadTexture(select_players);
+		UnloadTexture(splash);
 	}
 };
 
@@ -206,10 +248,10 @@ public:
 			for (int j = 0; j < width; ++j) {
 				const Tile& tile = tiles.at(i).at(j);
 				if (tile.solidity > 0) {
-					pixels.at(i).at(j) = glm::u8vec4(0, 0, 0, 255);
+					pixels.at(i).at(j) = glm::u8vec4(255, 255, 255, 255);
 				}
 				else {
-					pixels.at(i).at(j) = glm::u8vec4(255, 255, 255, 255);
+					pixels.at(i).at(j) = glm::u8vec4(0, 0, 0, 255);
 				}
 			}
 		}
@@ -798,43 +840,173 @@ public:
 	}
 };
 
+class Menu {
+public:
+
+	enum MenuPage {
+		Splash,
+		SelectPlayers,
+		Help,
+		Credits,
+		GameStarting,
+		Endgame,
+	};
+
+	Content& content;
+	const Camera2D& camera;
+	MenuPage currentPage;
+	int players = 1;
+	int bots = 3;
+
+	Menu(Content& _content, const Camera2D& _camera, const MenuPage current_page) : content(_content), camera(_camera), currentPage(current_page) {
+	}
+
+	void updateAndRender()
+	{
+		if (currentPage == MenuPage::Splash) {
+			DrawTexture(content.splash, 0, 0, WHITE);
+
+			if (button(content.button_credits, 54, 34)) {
+				currentPage = MenuPage::Credits;
+			}
+
+			if (button(content.button_help, 54, 44)) {
+				currentPage = MenuPage::Help;
+			}
+
+			if (button(content.button_play, 54, 54)) {
+				currentPage = MenuPage::SelectPlayers;
+			}
+		}
+		else if (currentPage == MenuPage::Help) {
+			DrawTexture(content.help, 0, 0, WHITE);
+
+			if (button(content.button_back, 1, 54)) {
+				currentPage = MenuPage::Splash;
+			}
+		}
+		else if (currentPage == MenuPage::Credits) {
+			DrawTexture(content.credits, 0, 0, WHITE);
+
+			if (button(content.button_back, 54, 54)) {
+				currentPage = MenuPage::Splash;
+			}
+		}
+		else if (currentPage == MenuPage::SelectPlayers) {
+			DrawTexture(content.select_players, 0, 0, WHITE);
+
+			{
+				if (button(content.button_one, 7, 15, players == 1)) {
+					players = 1;
+				}
+
+				if (button(content.button_two, 21, 15, players == 2)) {
+					players = 2;
+				}
+
+				if (button(content.button_three, 35, 15, players == 3)) {
+					players = 3;
+				}
+
+				if (button(content.button_four, 49, 15, players == 4)) {
+					players = 4;
+				}
+			}
+
+			{
+				if (button(content.button_zero, 7, 41, bots == 0)) {
+					bots = 0;
+				}
+
+				if (button(content.button_one, 21, 41, bots == 1)) {
+					bots = 1;
+				}
+
+				if (button(content.button_two, 35, 41, bots == 2)) {
+					bots = 2;
+				}
+
+				if (button(content.button_three, 49, 41, bots == 3)) {
+					bots = 3;
+				}
+			}
+
+			bots = std::clamp(bots, 0, 4 - players);
+
+			if (button(content.button_back, 1, 54)) {
+				currentPage = MenuPage::Splash;
+			}
+
+			if (button(content.button_play, 54, 54)) {
+				currentPage = MenuPage::GameStarting;
+			}
+		}
+	}
+
+private:
+	bool button(Texture texture, const int x, const int y, const bool selected = false) {
+		const Vector2 ray_mousepos = GetScreenToWorld2D(GetMousePosition(), camera);
+		const glm::ivec2 mouse_position(ray_mousepos.x, ray_mousepos.y);
+		const glm::ivec2 image_position(x, y);
+		const glm::ivec2 image_size(texture.width, texture.height);
+		const bool mouse_hover = mouse_position.x >= image_position.x && mouse_position.y >= image_position.y &&
+			mouse_position.x < image_position.x + image_size.x && mouse_position.y < image_position.y + image_size.y;
+
+		const Color color = mouse_hover ? YELLOW : (selected ? GREEN : WHITE);
+		DrawTexture(texture, image_position.x, image_position.y, color);
+
+		return mouse_hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+	}
+};
+
 int main() {
 	InitWindow(1280, 720, "Destructive Drones");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	SetTargetFPS(60);
 
-	Image drone = LoadImage("drone.png");
-	Texture texture = LoadTextureFromImage(drone);
+	Camera2D camera;
+	memset(&camera, 0, sizeof(Camera2D));
 
 	Settings settings;
 	Content content;
-	Level level(settings);
-	Session session(settings, content, level);
-	session.addPlayer(0, false);
+	std::unique_ptr<Menu> menu;
+	std::unique_ptr<Level> level;
+	std::unique_ptr<Session> session;
+
+	menu.reset(new Menu(content, camera, Menu::Splash));
 
 	while (!WindowShouldClose()) {
-
-		Camera2D camera;
-		memset(&camera, 0, sizeof(Camera2D));
 		camera.zoom = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
-
-		if (IsKeyPressed(KEY_F6)) {
-			session.addPlayer(1, IsKeyDown(KEY_LEFT_SHIFT));
-		}
-		if (IsKeyPressed(KEY_F7)) {
-			session.addPlayer(2, IsKeyDown(KEY_LEFT_SHIFT));
-		}
-		if (IsKeyPressed(KEY_F8)) {
-			session.addPlayer(3, IsKeyDown(KEY_LEFT_SHIFT));
-		}
-
-		session.update();
 
 		BeginDrawing();
 		BeginMode2D(camera);
-		ClearBackground(RAYWHITE);
-		session.renderScene();
-		session.renderUi();
+		ClearBackground(BLACK);
+
+		if (menu) {
+			menu->updateAndRender();
+
+			if (menu->currentPage == Menu::GameStarting) {
+
+				level.reset(new Level(settings));
+				session.reset(new Session(settings, content, *level));
+
+				for (int i = 0; i < menu->players; ++i) {
+					session->addPlayer(i, false);
+				}
+
+				for (int i = 0; i < menu->bots; ++i) {
+					session->addPlayer(menu->players + i, true);
+				}
+
+				menu.reset();
+			}
+		}
+		else {
+			session->update();
+			session->renderScene();
+			session->renderUi();
+		}
+
 		EndMode2D();
 		EndDrawing();
 	}
