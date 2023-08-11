@@ -296,8 +296,18 @@ class Session {
 public:
 	struct Respawn
 	{
-		int playerIndex;
+		enum RespawnType {
+			Player,
+			Item,
+		};
+
+		RespawnType type;
 		double respawnTime;
+
+		int playerIndex;
+
+		ItemType itemType;
+		Bounds itemBounds;
 	};
 
 	const Settings& settings;
@@ -641,6 +651,13 @@ public:
 						}
 					}
 
+					Respawn respawn;
+					respawn.type = Respawn::Item;
+					respawn.respawnTime = GetTime() + settings.itemSpawnDelay;
+					respawn.itemType = item_iter->type;
+					respawn.itemBounds = item_iter->bounds;
+					respawns.emplace_back(std::move(respawn));
+
 					item_iter = items.erase(item_iter);
 					break;
 				}
@@ -729,7 +746,10 @@ public:
 										shooter->score += 1;
 									}
 
-									Respawn respawn{ player.playerIndex, GetTime() + settings.respawnTime };
+									Respawn respawn;
+									respawn.type = Respawn::Player;
+									respawn.respawnTime = GetTime() + settings.respawnTime;
+									respawn.playerIndex = player.playerIndex;
 									respawns.emplace_back(std::move(respawn));
 								}
 							}
@@ -748,10 +768,16 @@ public:
 
 		for (auto respawn_iter = respawns.begin(); respawn_iter != respawns.end();) {
 			if (GetTime() >= respawn_iter->respawnTime) {
-				auto player_iter = std::find_if(players.begin(), players.end(), [index = respawn_iter->playerIndex](const Player& player) { return player.playerIndex == index; });
-				player_iter->bounds.position = findRespawnPosition();
-				player_iter->subpixelPosition = player_iter->bounds.position;
-				player_iter->health = settings.playerMaxHealth;
+				if (respawn_iter->type == Respawn::Player) {
+					auto player_iter = std::find_if(players.begin(), players.end(), [index = respawn_iter->playerIndex](const Player& player) { return player.playerIndex == index; });
+					player_iter->bounds.position = findRespawnPosition();
+					player_iter->subpixelPosition = player_iter->bounds.position;
+					player_iter->health = settings.playerMaxHealth;
+				}
+				else if (respawn_iter->type == Respawn::Item) {
+					Item item(respawn_iter->itemBounds, respawn_iter->itemType);
+					items.emplace_back(std::move(item));
+				}
 
 				respawn_iter = respawns.erase(respawn_iter);
 			}
