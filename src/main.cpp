@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <glm/gtx/compatibility.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <list>
 #include <optional>
 #include <random>
@@ -12,7 +13,7 @@
 
 enum WeaponType {
 	MachineGun,
-	Laser,
+	Shotgun,
 	RocketLauncher,
 };
 
@@ -22,6 +23,9 @@ struct WeaponSettings {
 	float shootDelay;
 	float projectileSpeed;
 	float projectileDamage;
+	int projectileCount;
+	float projectileSpread;
+	float projectileLife;
 	int blastRadius;
 	bool shakeOnHit;
 	int soundIndex;
@@ -59,22 +63,31 @@ struct Settings {
 		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
 		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
+		weapons.at(WeaponType::MachineGun).projectileCount = 1;
+		weapons.at(WeaponType::MachineGun).projectileSpread = 0;
+		weapons.at(WeaponType::MachineGun).projectileLife = FLT_MAX;
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
 		weapons.at(WeaponType::MachineGun).shakeOnHit = false;
 		weapons.at(WeaponType::MachineGun).soundIndex = 0;
-		weapons.at(WeaponType::Laser).ammo = 20;
-		weapons.at(WeaponType::Laser).maxAmmo = 20;
-		weapons.at(WeaponType::Laser).shootDelay = 1.0f;
-		weapons.at(WeaponType::Laser).projectileSpeed = 100.0f;
-		weapons.at(WeaponType::Laser).projectileDamage = 25.0f;
-		weapons.at(WeaponType::Laser).blastRadius = 0;
-		weapons.at(WeaponType::Laser).shakeOnHit = false;
-		weapons.at(WeaponType::Laser).soundIndex = 0;
+		weapons.at(WeaponType::Shotgun).ammo = 20;
+		weapons.at(WeaponType::Shotgun).maxAmmo = 20;
+		weapons.at(WeaponType::Shotgun).shootDelay = 1.0f;
+		weapons.at(WeaponType::Shotgun).projectileSpeed = 50.0f;
+		weapons.at(WeaponType::Shotgun).projectileDamage = 10.0f;
+		weapons.at(WeaponType::Shotgun).projectileCount = 7;
+		weapons.at(WeaponType::Shotgun).projectileSpread = 60;
+		weapons.at(WeaponType::Shotgun).projectileLife = 1.0f;
+		weapons.at(WeaponType::Shotgun).blastRadius = 0;
+		weapons.at(WeaponType::Shotgun).shakeOnHit = false;
+		weapons.at(WeaponType::Shotgun).soundIndex = 0;
 		weapons.at(WeaponType::RocketLauncher).ammo = 5;
 		weapons.at(WeaponType::RocketLauncher).maxAmmo = 5;
-		weapons.at(WeaponType::RocketLauncher).shootDelay = 2.0f;
+		weapons.at(WeaponType::RocketLauncher).shootDelay = 1.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileDamage = 50.0f;
+		weapons.at(WeaponType::RocketLauncher).projectileCount = 1;
+		weapons.at(WeaponType::RocketLauncher).projectileSpread = 0;
+		weapons.at(WeaponType::RocketLauncher).projectileLife = FLT_MAX;
 		weapons.at(WeaponType::RocketLauncher).blastRadius = 4;
 		weapons.at(WeaponType::RocketLauncher).shakeOnHit = true;
 		weapons.at(WeaponType::RocketLauncher).soundIndex = 1;
@@ -692,10 +705,15 @@ public:
 			if (player.weapon.has_value()) {
 				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
 				if (fire && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
-					const glm::vec2 velocity = shoot_direction * weapon_settings.projectileSpeed;
-					const glm::ivec2 projectile_position = player.bounds.position + player.bounds.size / 2;
-					Projectile projectile(Bounds{ projectile_position, glm::ivec2(1,1) }, player.playerIndex, *player.weapon, velocity);
-					projectiles.emplace_back(std::move(projectile));
+					for (int i = 0; i < weapon_settings.projectileCount; ++i) {
+						const float angle_random = (float(i) / weapon_settings.projectileCount) * 2 - 1;
+						const float angle = glm::radians(angle_random * weapon_settings.projectileSpread);
+						const glm::vec2 velocity = glm::rotate(shoot_direction, angle) * weapon_settings.projectileSpeed;
+
+						const glm::ivec2 projectile_position = player.bounds.position + player.bounds.size / 2;
+						Projectile projectile(Bounds{ projectile_position, glm::ivec2(1,1) }, player.playerIndex, *player.weapon, velocity);
+						projectiles.emplace_back(std::move(projectile));
+					}
 
 					player.ammo -= 1;
 					if (player.ammo == 0) {
@@ -949,7 +967,7 @@ public:
 				if (player.weapon == WeaponType::MachineGun) {
 					DrawTexture(content.machinegun, offset + 8, 57, WHITE);
 				}
-				else if (player.weapon == WeaponType::Laser) {
+				else if (player.weapon == WeaponType::Shotgun) {
 					DrawTexture(content.laser, offset + 8, 57, WHITE);
 				}
 				else if (player.weapon == WeaponType::RocketLauncher) {
