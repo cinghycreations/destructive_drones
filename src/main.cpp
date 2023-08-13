@@ -619,41 +619,46 @@ public:
 		shoot_direction = glm::vec2(0, 0);
 		fire = false;
 
-		if (player.playerIndex == 0) {
-			if (IsKeyDown(KEY_D)) {
-				move_direction = glm::vec2(1, 0);
-			}
-			else if (IsKeyDown(KEY_A)) {
-				move_direction = glm::vec2(-1, 0);
-			}
-			else if (IsKeyDown(KEY_S)) {
-				move_direction = glm::vec2(0, 1);
-			}
-			else if (IsKeyDown(KEY_W)) {
-				move_direction = glm::vec2(0, -1);
+		if (IsGamepadAvailable(player.playerIndex)) {
+			const float deadzone = 0.2f;
+			{
+
+				const float axis = GetGamepadAxisMovement(player.playerIndex, GAMEPAD_AXIS_LEFT_X);
+				if (std::abs(axis) >= deadzone) {
+					move_direction.x = axis;
+				}
 			}
 
-			if (IsKeyDown(KEY_RIGHT)) {
-				shoot_direction.x += 1;
-				fire = true;
-			}
-			else if (IsKeyDown(KEY_LEFT)) {
-				shoot_direction.x -= 1;
-				fire = true;
+			{
+				const float axis = GetGamepadAxisMovement(player.playerIndex, GAMEPAD_AXIS_LEFT_Y);
+				if (std::abs(axis) >= deadzone) {
+					move_direction.y = axis;
+				}
 			}
 
-			if (IsKeyDown(KEY_DOWN)) {
-				shoot_direction.y += 1;
-				fire = true;
+			{
+				const float axis = GetGamepadAxisMovement(player.playerIndex, GAMEPAD_AXIS_RIGHT_X);
+				if (std::abs(axis) >= deadzone) {
+					shoot_direction.x = axis;
+				}
 			}
-			else if (IsKeyDown(KEY_UP)) {
-				shoot_direction.y -= 1;
-				fire = true;
+
+			{
+				const float axis = GetGamepadAxisMovement(player.playerIndex, GAMEPAD_AXIS_RIGHT_Y);
+				if (std::abs(axis) >= deadzone) {
+					shoot_direction.y = axis;
+				}
+			}
+
+			if (glm::length(move_direction) > 0) {
+				move_direction = glm::normalize(move_direction);
 			}
 
 			if (glm::length(shoot_direction) > 0) {
 				shoot_direction = glm::normalize(shoot_direction);
 			}
+
+			fire = IsGamepadButtonDown(player.playerIndex, GAMEPAD_BUTTON_RIGHT_TRIGGER_2);
 		}
 	}
 
