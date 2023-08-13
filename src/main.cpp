@@ -24,6 +24,7 @@ struct WeaponSettings {
 	float projectileDamage;
 	int blastRadius;
 	bool shakeOnHit;
+	int soundIndex;
 };
 
 struct Settings {
@@ -60,6 +61,7 @@ struct Settings {
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
 		weapons.at(WeaponType::MachineGun).shakeOnHit = false;
+		weapons.at(WeaponType::MachineGun).soundIndex = 0;
 		weapons.at(WeaponType::Laser).ammo = 20;
 		weapons.at(WeaponType::Laser).maxAmmo = 20;
 		weapons.at(WeaponType::Laser).shootDelay = 1.0f;
@@ -67,6 +69,7 @@ struct Settings {
 		weapons.at(WeaponType::Laser).projectileDamage = 25.0f;
 		weapons.at(WeaponType::Laser).blastRadius = 0;
 		weapons.at(WeaponType::Laser).shakeOnHit = false;
+		weapons.at(WeaponType::Laser).soundIndex = 0;
 		weapons.at(WeaponType::RocketLauncher).ammo = 5;
 		weapons.at(WeaponType::RocketLauncher).maxAmmo = 5;
 		weapons.at(WeaponType::RocketLauncher).shootDelay = 2.0f;
@@ -74,6 +77,7 @@ struct Settings {
 		weapons.at(WeaponType::RocketLauncher).projectileDamage = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).blastRadius = 4;
 		weapons.at(WeaponType::RocketLauncher).shakeOnHit = true;
+		weapons.at(WeaponType::RocketLauncher).soundIndex = 1;
 	}
 };
 
@@ -100,6 +104,9 @@ struct Content {
 	Texture splash;
 	Texture rankings;
 
+	Sound menuSound;
+	std::array<Sound, 2> weaponSounds;
+
 	Content() {
 		pixel = LoadTexture("pixel.png");
 
@@ -122,6 +129,10 @@ struct Content {
 		select_players = LoadTexture("ui/select_players.png");
 		splash = LoadTexture("ui/splash.png");
 		rankings = LoadTexture("ui/rankings.png");
+
+		menuSound = LoadSound("menu.mp3");
+		weaponSounds.at(0) = LoadSound("shot.mp3");
+		weaponSounds.at(1) = LoadSound("rocket.mp3");
 	}
 
 	~Content() {
@@ -686,6 +697,8 @@ public:
 						player.weapon.reset();
 					}
 
+					PlaySound(content.weaponSounds.at(weapon_settings.soundIndex));
+
 					player.lastShot = GetTime();
 				}
 			}
@@ -1090,7 +1103,13 @@ private:
 		const Color color = mouse_hover ? YELLOW : (selected ? GREEN : WHITE);
 		DrawTexture(texture, image_position.x, image_position.y, color);
 
-		return mouse_hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+		if (mouse_hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			PlaySound(content.menuSound);
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 };
 
@@ -1098,6 +1117,8 @@ int main() {
 	InitWindow(1280, 720, "Destructive Drones");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	SetTargetFPS(60);
+
+	InitAudioDevice();
 
 	Camera2D camera;
 	memset(&camera, 0, sizeof(Camera2D));
@@ -1159,6 +1180,7 @@ int main() {
 		EndDrawing();
 	}
 
+	CloseAudioDevice();
 	CloseWindow();
 
 	return 0;
