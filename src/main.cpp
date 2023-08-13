@@ -23,6 +23,7 @@ struct WeaponSettings {
 	float projectileSpeed;
 	float projectileDamage;
 	int blastRadius;
+	bool shakeOnHit;
 };
 
 struct Settings {
@@ -33,6 +34,8 @@ struct Settings {
 	float tileHealth;
 	int scoreForWin;
 	float respawnTime;
+	float cameraShakeStrength;
+	float cameraShakeTime;
 	std::array<Color, 4> playerTints;
 	std::array<WeaponSettings, 3> weapons;
 
@@ -44,6 +47,8 @@ struct Settings {
 		tileHealth = 10.0f;
 		scoreForWin = 10;
 		respawnTime = 5;
+		cameraShakeStrength = 1.0f;
+		cameraShakeTime = 0.5f;
 		playerTints.at(0) = RED;
 		playerTints.at(1) = YELLOW;
 		playerTints.at(2) = GREEN;
@@ -54,18 +59,21 @@ struct Settings {
 		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::MachineGun).projectileDamage = 5.0f;
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
+		weapons.at(WeaponType::MachineGun).shakeOnHit = false;
 		weapons.at(WeaponType::Laser).ammo = 20;
 		weapons.at(WeaponType::Laser).maxAmmo = 20;
 		weapons.at(WeaponType::Laser).shootDelay = 1.0f;
 		weapons.at(WeaponType::Laser).projectileSpeed = 100.0f;
 		weapons.at(WeaponType::Laser).projectileDamage = 25.0f;
 		weapons.at(WeaponType::Laser).blastRadius = 0;
+		weapons.at(WeaponType::Laser).shakeOnHit = false;
 		weapons.at(WeaponType::RocketLauncher).ammo = 5;
 		weapons.at(WeaponType::RocketLauncher).maxAmmo = 5;
 		weapons.at(WeaponType::RocketLauncher).shootDelay = 2.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileSpeed = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileDamage = 50.0f;
 		weapons.at(WeaponType::RocketLauncher).blastRadius = 4;
+		weapons.at(WeaponType::RocketLauncher).shakeOnHit = true;
 	}
 };
 
@@ -298,6 +306,44 @@ private:
 	}
 };
 
+class CameraShake
+{
+public:
+	const Settings& settings;
+
+	CameraShake(const Settings& _settings) : settings(_settings) {
+	}
+
+	void shake() {
+		const double now = GetTime();
+		if (now >= startTime && now < endTime) {
+			return;
+		}
+
+		startTime = now;
+		endTime = startTime + settings.cameraShakeTime;
+	}
+
+	void updateCamera(Camera2D& camera) {
+		const double now = GetTime();
+		const double progress = (now - startTime) / (endTime - startTime);
+		if (progress >= 0 && progress < 1) {
+			const float angle = glm::radians(float(progress) * 360);
+			const float dx = std::floor(std::cos(angle) * settings.cameraShakeStrength);
+			const float dy = std::floor(std::sin(angle) * settings.cameraShakeStrength);
+			camera.target = Vector2{ dx, dy };
+		}
+		else {
+			camera.target = Vector2{ 0, 0 };
+		}
+	}
+
+private:
+
+	double startTime = -1;
+	double endTime = 0;
+};
+
 class Session {
 public:
 	struct Respawn
@@ -323,8 +369,9 @@ public:
 	std::list<Item> items;
 	std::list<Projectile> projectiles;
 	std::list<Respawn> respawns;
+	CameraShake cameraShake;
 
-	Session(const Settings& _settings, const Content& _content, Level& _level) : settings(_settings), content(_content), level(_level) {
+	Session(const Settings& _settings, const Content& _content, Level& _level) : settings(_settings), content(_content), level(_level), cameraShake(settings) {
 		for (const Level::ItemSpawn& spawn : level.itemSpawns) {
 			Bounds bounds{ spawn.position, glm::ivec2(4,4) };
 			Item item(bounds, spawn.type);
@@ -763,6 +810,10 @@ public:
 					}
 				}
 
+				if (weapon_settings.shakeOnHit) {
+					cameraShake.shake();
+				}
+
 				projectile_iter = projectiles.erase(projectile_iter);
 			}
 			else {
@@ -1092,6 +1143,7 @@ int main() {
 		}
 		else {
 			session->update();
+			session->cameraShake.updateCamera(camera);
 			session->renderScene();
 			session->renderUi();
 
