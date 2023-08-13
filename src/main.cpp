@@ -10,8 +10,6 @@
 #include <random>
 #include <queue>
 
-#pragma optimize("",off)
-
 enum WeaponType {
 	MachineGun,
 	Laser,
