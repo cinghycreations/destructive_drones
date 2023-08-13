@@ -1062,7 +1062,12 @@ int main() {
 	menu.reset(new Menu(settings, content, camera));
 
 	while (!WindowShouldClose()) {
-		camera.zoom = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
+		{
+			const float pixels_per_unit = float(std::min(GetScreenWidth(), GetScreenHeight())) / 64.0f;
+			camera.zoom = pixels_per_unit;
+			camera.offset.x = (float(GetScreenWidth()) - pixels_per_unit * 64.0f) / 2.0f;
+			camera.offset.y = (float(GetScreenHeight()) - pixels_per_unit * 64.0f) / 2.0f;
+		}
 
 		BeginDrawing();
 		BeginMode2D(camera);
