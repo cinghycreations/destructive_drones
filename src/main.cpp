@@ -123,6 +123,8 @@ struct Content {
 	Sound menuSound;
 	std::array<Sound, 2> weaponSounds;
 
+	std::vector<Texture> menuVideo;
+
 	Content() {
 		pixel = LoadTexture("pixel.png");
 
@@ -150,6 +152,22 @@ struct Content {
 		menuSound = LoadSound("menu.mp3");
 		weaponSounds.at(0) = LoadSound("shot.mp3");
 		weaponSounds.at(1) = LoadSound("rocket.mp3");
+
+		int i = 1;
+		while (true) {
+			std::array<char, 64> filename;
+			sprintf_s(filename.data(), filename.size(), "menu%04d.png", i);
+			const std::filesystem::path path = std::filesystem::path("video") / filename.data();
+
+			if (std::filesystem::exists(path)) {
+				Texture frame = LoadTexture(path.string().c_str());
+				menuVideo.emplace_back(std::move(frame));
+				++i;
+			}
+			else {
+				break;
+			}
+		}
 	}
 
 	~Content() {
@@ -175,6 +193,16 @@ struct Content {
 		UnloadTexture(select_players);
 		UnloadTexture(splash);
 		UnloadTexture(rankings);
+
+		for (Texture& frame : menuVideo) {
+			UnloadTexture(frame);
+		}
+		menuVideo.clear();
+
+		UnloadSound(menuSound);
+		for (Sound& sound : weaponSounds) {
+			UnloadSound(sound);
+		}
 	}
 };
 
@@ -1074,6 +1102,11 @@ public:
 
 	void updateAndRender()
 	{
+		if (!content.menuVideo.empty()) {
+			const int frame = int(GetTime() * 30) % content.menuVideo.size();
+			DrawTexture(content.menuVideo.at(frame), 0, 0, Color{ 170, 170, 170, 255 });
+		}
+
 		if (currentPage == MenuPage::Splash) {
 			DrawTexture(content.splash, 0, 0, WHITE);
 
