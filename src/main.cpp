@@ -117,6 +117,7 @@ struct Content {
 	Texture rankings;
 
 	Sound menuSound;
+	Sound reloadSound;
 	std::array<Sound, 2> weaponSounds;
 
 	std::vector<Texture> menuVideo;
@@ -146,6 +147,7 @@ struct Content {
 		rankings = LoadTexture("ui/rankings.png");
 
 		menuSound = LoadSound("menu.mp3");
+		reloadSound = LoadSound("reload.mp3");
 		weaponSounds.at(0) = LoadSound("shot.mp3");
 		weaponSounds.at(1) = LoadSound("rocket.mp3");
 
@@ -196,6 +198,7 @@ struct Content {
 		menuVideo.clear();
 
 		UnloadSound(menuSound);
+		UnloadSound(reloadSound);
 		for (Sound& sound : weaponSounds) {
 			UnloadSound(sound);
 		}
@@ -818,6 +821,8 @@ public:
 						const WeaponType weapon_type = WeaponType(item_iter->type - ItemType::Weapon0);
 						player.weapon = weapon_type;
 						player.ammo = settings.weapons.at(*player.weapon).maxAmmo;
+
+						PlaySound(content.reloadSound);
 					}
 
 					Respawn respawn;
