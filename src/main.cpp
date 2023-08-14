@@ -112,7 +112,8 @@ struct Content {
 	Texture button_two;
 	Texture button_zero;
 	Texture credits;
-	Texture help;
+	Texture help1;
+	Texture help2;
 	Texture select_players;
 	Texture splash;
 	Texture rankings;
@@ -138,7 +139,8 @@ struct Content {
 		button_two = LoadTexture("ui/button_two.png");
 		button_zero = LoadTexture("ui/button_zero.png");
 		credits = LoadTexture("ui/credits.png");
-		help = LoadTexture("ui/help.png");
+		help1 = LoadTexture("ui/help1.png");
+		help2 = LoadTexture("ui/help2.png");
 		select_players = LoadTexture("ui/select_players.png");
 		splash = LoadTexture("ui/splash.png");
 		rankings = LoadTexture("ui/rankings.png");
@@ -166,7 +168,8 @@ struct Content {
 		UnloadTexture(button_two);
 		UnloadTexture(button_zero);
 		UnloadTexture(credits);
-		UnloadTexture(help);
+		UnloadTexture(help1);
+		UnloadTexture(help2);
 		UnloadTexture(select_players);
 		UnloadTexture(splash);
 		UnloadTexture(rankings);
@@ -989,7 +992,8 @@ public:
 	enum MenuPage {
 		Splash,
 		SelectPlayers,
-		Help,
+		Help1,
+		Help2,
 		Credits,
 		GameStarting,
 		Rankings,
@@ -1019,17 +1023,24 @@ public:
 			}
 
 			if (button(content.button_help, 54, 44)) {
-				currentPage = MenuPage::Help;
+				currentPage = MenuPage::Help1;
 			}
 
 			if (button(content.button_play, 54, 54)) {
 				currentPage = MenuPage::SelectPlayers;
 			}
 		}
-		else if (currentPage == MenuPage::Help) {
-			DrawTexture(content.help, 0, 0, WHITE);
+		else if (currentPage == MenuPage::Help1) {
+			DrawTexture(content.help1, 0, 0, WHITE);
 
-			if (button(content.button_back, 1, 54)) {
+			if (button(content.button_play, 1, 54)) {
+				currentPage = MenuPage::Help2;
+			}
+		}
+		else if (currentPage == MenuPage::Help2) {
+			DrawTexture(content.help2, 0, 0, WHITE);
+
+			if (button(content.button_play, 1, 54)) {
 				currentPage = MenuPage::Splash;
 			}
 		}
