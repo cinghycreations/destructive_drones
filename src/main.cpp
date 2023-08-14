@@ -1269,7 +1269,7 @@ int main() {
 
 			if (menu->currentPage == Menu::GameStarting) {
 
-				level.reset(new Level(settings, "testbed.csv"));
+				level.reset(new Level(settings, "map0.csv"));
 				session.reset(new Session(settings, content, *level));
 
 				for (int i = 0; i < menu->players; ++i) {

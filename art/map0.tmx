@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="64" height="56" tilewidth="64" tileheight="64" infinite="0" nextlayerid="2" nextobjectid="1">
+ <editorsettings>
+  <export target="../build/map0.csv" format="csv"/>
+ </editorsettings>
+ <tileset firstgid="1" name="tiles" tilewidth="64" tileheight="64" tilecount="16" columns="4">
+  <image source="tiles.png" width="256" height="256"/>
+ </tileset>
+ <layer id="1" name="Livello tile 1" width="64" height="56">
+  <data encoding="base64" compression="zlib">
+   eJzt2ssOwzAIRFE3Vdv//+NsIxepsT1AUu5ILB1z8hILb621rXhl5NFVRo7+Z/Delv/luJ/l4/njv6Nfdd8UfoUBf8yeffDjx78W/P/r73v8VSPBr1s720+mfyVR/qumul8V/L7+kXcz479y9L8drn8nv0fwzxvw44/yj855iu/0s9C3qt9M/0rw41f6I/qMXHs2lfzWfFvJb4X5Fz/+usGP/6z/ajOgIpn+mXXqeRy/5vvHH+9XBD9+/OvBjx+/v1+dqPP/1rn+aD/n/7+DHz/+2rUDwGgEZg==
+  </data>
+ </layer>
+</map>
