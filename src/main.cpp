@@ -20,7 +20,6 @@ enum WeaponType {
 };
 
 struct WeaponSettings {
-	int ammo;
 	int maxAmmo;
 	float shootDelay;
 	float projectileSpeed;
@@ -60,7 +59,6 @@ struct Settings {
 		playerTints.at(1) = YELLOW;
 		playerTints.at(2) = GREEN;
 		playerTints.at(3) = BLUE;
-		weapons.at(WeaponType::MachineGun).ammo = 20;
 		weapons.at(WeaponType::MachineGun).maxAmmo = 40;
 		weapons.at(WeaponType::MachineGun).shootDelay = 0.2f;
 		weapons.at(WeaponType::MachineGun).projectileSpeed = 50.0f;
@@ -71,7 +69,6 @@ struct Settings {
 		weapons.at(WeaponType::MachineGun).blastRadius = 0;
 		weapons.at(WeaponType::MachineGun).shakeOnHit = false;
 		weapons.at(WeaponType::MachineGun).soundIndex = 0;
-		weapons.at(WeaponType::Shotgun).ammo = 20;
 		weapons.at(WeaponType::Shotgun).maxAmmo = 20;
 		weapons.at(WeaponType::Shotgun).shootDelay = 1.0f;
 		weapons.at(WeaponType::Shotgun).projectileSpeed = 50.0f;
@@ -82,7 +79,6 @@ struct Settings {
 		weapons.at(WeaponType::Shotgun).blastRadius = 0;
 		weapons.at(WeaponType::Shotgun).shakeOnHit = false;
 		weapons.at(WeaponType::Shotgun).soundIndex = 0;
-		weapons.at(WeaponType::RocketLauncher).ammo = 5;
 		weapons.at(WeaponType::RocketLauncher).maxAmmo = 5;
 		weapons.at(WeaponType::RocketLauncher).shootDelay = 1.0f;
 		weapons.at(WeaponType::RocketLauncher).projectileSpeed = 50.0f;
@@ -820,14 +816,8 @@ public:
 				if (collide(player.bounds, item_iter->bounds)) {
 					if (item_iter->type >= ItemType::Weapon0 && item_iter->type <= ItemType::Weapon7) {
 						const WeaponType weapon_type = WeaponType(item_iter->type - ItemType::Weapon0);
-
-						if (player.weapon.has_value() && *player.weapon == weapon_type) {
-							player.ammo = std::max<int>(player.ammo + settings.weapons.at(*player.weapon).ammo, settings.weapons.at(*player.weapon).maxAmmo);
-						}
-						else {
-							player.weapon = weapon_type;
-							player.ammo = settings.weapons.at(*player.weapon).maxAmmo;
-						}
+						player.weapon = weapon_type;
+						player.ammo = settings.weapons.at(*player.weapon).maxAmmo;
 					}
 
 					Respawn respawn;
