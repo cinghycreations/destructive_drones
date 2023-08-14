@@ -52,7 +52,7 @@ struct Settings {
 		playerCrosshairSpeed = 20.0f;
 		itemSpawnDelay = 5.0f;
 		tileHealth = 10.0f;
-		scoreForWin = 10;
+		scoreForWin = 20;
 		respawnTime = 3;
 		cameraShakeStrength = 1.0f;
 		cameraShakeTime = 0.5f;

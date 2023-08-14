@@ -1,6 +1,6 @@
 # DESTRUCTIVE DRONES
 
-Destructive Drones is an arena shooter for up to 4 players with destructible environment, with a resolution of 64x64 pixels
+Destructive Drones is an arena shooter for up to 4 players with destructible environment, with a resolution of 64x64 pixels.
 
 Originally made for the [LOWREZJAM 2023](https://itch.io/jam/lowrezjam-2023)
 
@@ -21,7 +21,7 @@ There are three weapons in the game:
 ## Credits
 
 ### Game Design and Programming
-Copyright (c) 2023 Cinghy Creations
+Copyright (c) 2023 [Cinghy Creations](https://cinghycreations.itch.io/)
 
 ### Libraries
 - [raylib](https://www.raylib.com/) Copyright (c) 2013-2023 Ramon Santamaria
@@ -29,4 +29,3 @@ Copyright (c) 2023 Cinghy Creations
 
 ### Sounds
 - Sound effects obtained from https://www.zapsplat.com
-
