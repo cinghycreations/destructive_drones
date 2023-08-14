@@ -50,10 +50,10 @@ struct Settings {
 		playerMaxHealth = 100.0f;
 		playerSpeed = 20.0f;
 		playerCrosshairSpeed = 20.0f;
-		itemSpawnDelay = 10.0f;
+		itemSpawnDelay = 5.0f;
 		tileHealth = 10.0f;
 		scoreForWin = 10;
-		respawnTime = 5;
+		respawnTime = 3;
 		cameraShakeStrength = 1.0f;
 		cameraShakeTime = 0.5f;
 		playerTints.at(0) = RED;
