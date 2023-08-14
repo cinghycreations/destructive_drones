@@ -3,15 +3,12 @@
  <editorsettings>
   <export target="../build/testbed.csv" format="csv"/>
  </editorsettings>
- <tileset firstgid="1" name="small_tiles" tilewidth="64" tileheight="64" tilecount="16" columns="4">
-  <image source="small_tiles.png" width="256" height="256"/>
- </tileset>
- <tileset firstgid="17" name="big_tiles" tilewidth="256" tileheight="256" tilecount="16" columns="4">
-  <image source="big_tiles.png" width="1024" height="1024"/>
+ <tileset firstgid="1" name="tiles" tilewidth="64" tileheight="64" tilecount="16" columns="4">
+  <image source="tiles.png" width="256" height="256"/>
  </tileset>
  <layer id="1" name="Livello tile 1" width="64" height="56">
   <data encoding="base64" compression="zlib">
-   eJzt20EOgyAQQFHqDdqm979qF924cGEYwQ7zfsJS9IWEsMCttbYVH1Xj57/C/wiOu9r7P4F5MviPfNafnz8ePz8/Pz8/Pz9/LX/W+PnP+F+jP+SmRqx/pr1wFf+787lV/L3x8/NfGz//LH90bv7c539+/ln+f9zX+fn5+fn5+ev5o/Hz85+run/F+Pn5f0Xu//f2nPiukff/szbqf7JM4wsRJQVf
+   eJzt2kEKwjAQQNFYUe9/Y3FXiovIjAnJvA+zbMgjpHTRo7V2FJ+qnf33mRsZ0Def88/x34IzK35+/nj8+/ofHevs7O9plv8ZePbT6v5o/Pz88fj5K/tXjZ+fP7eV3oX8/Py58fPz84/wR9fmX/v7l59/lD/jXr9+wf1hT9dG+7Pj5+fn5+ev6I/Gz8/fV3X/jvn/3/nz143fvAFYowTz
   </data>
  </layer>
 </map>

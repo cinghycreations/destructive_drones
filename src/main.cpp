@@ -10,6 +10,8 @@
 #include <optional>
 #include <random>
 #include <queue>
+#include <fstream>
+#include <string>
 
 enum WeaponType {
 	MachineGun,
@@ -268,8 +270,9 @@ public:
 	Texture texture;
 	bool textureDirty = false;
 
-	Level(const Settings& _settings) : settings(_settings) {
-		testLevel();
+	Level(const Settings& _settings, const std::filesystem::path& path) : settings(_settings) {
+		//testLevel();
+		loadLevel(path);
 
 		Image dummy_image = GenImageColor(width, height, BLACK);
 		texture = LoadTextureFromImage(dummy_image);
@@ -330,6 +333,62 @@ private:
 		itemSpawns.push_back(ItemSpawn{ glm::ivec2(10, 2), ItemType::Weapon0 });
 		itemSpawns.push_back(ItemSpawn{ glm::ivec2(9, 19), ItemType::Weapon1 });
 		itemSpawns.push_back(ItemSpawn{ glm::ivec2(49, 21), ItemType::Weapon2 });
+	}
+
+	void loadLevel(const std::filesystem::path& path) {
+		for (int i = 0; i < height; ++i) {
+			for (int j = 0; j < width; ++j) {
+				tiles.at(i).at(j).bedrock = false;
+				tiles.at(i).at(j).solidity = 0;
+			}
+		}
+		playerSpawns.clear();
+		itemSpawns.clear();
+
+		std::ifstream stream(path);
+
+		std::string line;
+		for (int i = 0; i < height; ++i) {
+			std::getline(stream, line);
+			int j = 0;
+
+			auto token_start = line.begin();
+			for (auto iter = std::next(line.begin()); ; ++iter) {
+				if (iter == line.end() || *iter == ',') {
+					const std::string token(token_start, iter);
+					const int tile = std::stoi(token);
+
+					if (tile == 0) {
+						tiles.at(i).at(j).bedrock = false;
+						tiles.at(i).at(j).solidity = settings.tileHealth;
+					}
+					else if (tile == 1) {
+						tiles.at(i).at(j).bedrock = true;
+						tiles.at(i).at(j).solidity = settings.tileHealth;
+					}
+					else if (tile == 2) {
+						playerSpawns.push_back(glm::ivec2(j, i));
+					}
+					else if (tile == 4) {
+						itemSpawns.push_back(ItemSpawn{ glm::ivec2(j, i), ItemType::Weapon0 });
+					}
+					else if (tile == 5) {
+						itemSpawns.push_back(ItemSpawn{ glm::ivec2(j, i), ItemType::Weapon1 });
+					}
+					else if (tile == 6) {
+						itemSpawns.push_back(ItemSpawn{ glm::ivec2(j, i), ItemType::Weapon2 });
+					}
+
+					++j;
+					if (iter == line.end()) {
+						break;
+					}
+					else {
+						token_start = std::next(iter);
+					}
+				}
+			}
+		}
 	}
 };
 
@@ -1182,7 +1241,7 @@ int main() {
 
 			if (menu->currentPage == Menu::GameStarting) {
 
-				level.reset(new Level(settings));
+				level.reset(new Level(settings, "testbed.csv"));
 				session.reset(new Session(settings, content, *level));
 
 				for (int i = 0; i < menu->players; ++i) {
