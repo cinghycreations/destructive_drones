@@ -112,6 +112,7 @@ struct Content {
 	Texture credits;
 	Texture help1;
 	Texture help2;
+	Texture help3;
 	Texture select_players;
 	Texture splash;
 	Texture rankings;
@@ -142,6 +143,7 @@ struct Content {
 		credits = LoadTexture("ui/credits.png");
 		help1 = LoadTexture("ui/help1.png");
 		help2 = LoadTexture("ui/help2.png");
+		help3 = LoadTexture("ui/help3.png");
 		select_players = LoadTexture("ui/select_players.png");
 		splash = LoadTexture("ui/splash.png");
 		rankings = LoadTexture("ui/rankings.png");
@@ -188,6 +190,7 @@ struct Content {
 		UnloadTexture(credits);
 		UnloadTexture(help1);
 		UnloadTexture(help2);
+		UnloadTexture(help3);
 		UnloadTexture(select_players);
 		UnloadTexture(splash);
 		UnloadTexture(rankings);
@@ -752,15 +755,55 @@ public:
 				}
 			}
 
-			if (glm::length(move_direction) > 0) {
-				move_direction = glm::normalize(move_direction);
-			}
-
-			if (glm::length(shoot_direction) > 0) {
-				shoot_direction = glm::normalize(shoot_direction);
-			}
 
 			fire = IsGamepadButtonDown(player.playerIndex, GAMEPAD_BUTTON_RIGHT_TRIGGER_2);
+		}
+
+		if (player.playerIndex == 0)
+		{
+			if (IsKeyDown(KEY_W)) {
+				move_direction.y = -1;
+			}
+
+			if (IsKeyDown(KEY_S)) {
+				move_direction.y = 1;
+			}
+
+			if (IsKeyDown(KEY_A)) {
+				move_direction.x = -1;
+			}
+
+			if (IsKeyDown(KEY_D)) {
+				move_direction.x = 1;
+			}
+
+			if (IsKeyDown(KEY_UP)) {
+				shoot_direction.y = -1;
+				fire = true;
+			}
+
+			if (IsKeyDown(KEY_DOWN)) {
+				shoot_direction.y = 1;
+				fire = true;
+			}
+
+			if (IsKeyDown(KEY_LEFT)) {
+				shoot_direction.x = -1;
+				fire = true;
+			}
+
+			if (IsKeyDown(KEY_RIGHT)) {
+				shoot_direction.x = 1;
+				fire = true;
+			}
+		}
+
+		if (glm::length(move_direction) > 0) {
+			move_direction = glm::normalize(move_direction);
+		}
+
+		if (glm::length(shoot_direction) > 0) {
+			shoot_direction = glm::normalize(shoot_direction);
 		}
 	}
 
@@ -1076,6 +1119,7 @@ public:
 		SelectPlayers,
 		Help1,
 		Help2,
+		Help3,
 		Credits,
 		GameStarting,
 		Rankings,
@@ -1126,6 +1170,13 @@ public:
 		}
 		else if (currentPage == MenuPage::Help2) {
 			DrawTexture(content.help2, 0, 0, WHITE);
+
+			if (button(content.button_play, 1, 54)) {
+				currentPage = MenuPage::Help3;
+			}
+		}
+		else if (currentPage == MenuPage::Help3) {
+			DrawTexture(content.help3, 0, 0, WHITE);
 
 			if (button(content.button_play, 1, 54)) {
 				currentPage = MenuPage::Splash;
