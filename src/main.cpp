@@ -1286,7 +1286,7 @@ private:
 };
 
 int main() {
-	InitWindow(1280, 720, "Destructive Drones");
+	InitWindow(720, 720, "Destructive Drones");
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	SetTargetFPS(60);
 
