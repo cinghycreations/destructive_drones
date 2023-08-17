@@ -11,7 +11,7 @@ target_link_libraries( destructive_drones PUBLIC raylib glm )
 
 if (EMSCRIPTEN)
 	set_target_properties( destructive_drones PROPERTIES COMPILE_FLAGS "-s ASYNCIFY" )
-	set_target_properties( destructive_drones PROPERTIES LINK_FLAGS "-s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/build@/ --shell-file C:/emsdk/upstream/emscripten/src/shell_minimal.html" )
+	set_target_properties( destructive_drones PROPERTIES LINK_FLAGS "-s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/build@/ --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/shell.html" )
 	set_target_properties( destructive_drones PROPERTIES OUTPUT_NAME "index" )
 	set_target_properties( destructive_drones PROPERTIES SUFFIX ".html" )
 endif ()
