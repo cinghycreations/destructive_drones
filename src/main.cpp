@@ -836,7 +836,7 @@ public:
 
 			if (player.weapon.has_value()) {
 				const WeaponSettings& weapon_settings = settings.weapons.at(*player.weapon);
-				if (fire && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
+				if (fire && glm::length(shoot_direction) > 0.5f && player.ammo > 0 && GetTime() - player.lastShot >= weapon_settings.shootDelay) {
 					for (int i = 0; i < weapon_settings.projectileCount; ++i) {
 						const float angle_random = (float(i) / weapon_settings.projectileCount) * 2 - 1;
 						const float angle = glm::radians(angle_random * weapon_settings.projectileSpread);
