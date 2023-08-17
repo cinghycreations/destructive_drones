@@ -156,7 +156,7 @@ struct Content {
 		int i = 1;
 		while (true) {
 			std::array<char, 64> filename;
-			sprintf_s(filename.data(), filename.size(), "menu%04d.png", i);
+			snprintf(filename.data(), filename.size(), "menu%04d.png", i);
 			const std::filesystem::path path = std::filesystem::path("video") / filename.data();
 
 			if (std::filesystem::exists(path)) {
