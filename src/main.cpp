@@ -12,6 +12,7 @@
 #include <queue>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 enum WeaponType {
 	MachineGun,
